@@ -1,38 +1,376 @@
 # 🌌 Nebula
 
-Gestor visual **local** de proyectos/repositorios. Detecta automáticamente los repos de tu máquina y los representa como una constelación de orbes procedurales generados a partir del ADN de cada proyecto: sus lenguajes, su tamaño y su actividad.
+> Gestor visual **local** de proyectos y repositorios que convierte la actividad de desarrollo en una constelación interactiva.
 
-## Qué hace
+Nebula detecta automáticamente los repositorios Git de tu máquina y representa cada proyecto como un orbe procedural generado a partir de su ADN: lenguajes, tamaño, complejidad y actividad reciente.
 
-- **Detección automática**: eliges carpetas desde la UI (navegador de carpetas integrado) y Nebula encuentra todos los repos git; los watchers detectan repos nuevos sin reiniciar.
-- **Arte generativo por proyecto**: cada repo tiene una visual única y determinista (shaders GLSL + three.js). Los colores salen de la mezcla de lenguajes, el tamaño de la complejidad, y el "pulso" de la actividad reciente (commits + sesiones de agentes IA).
-- **Git en vivo**: rama, ahead/behind, working tree, ramas, últimos commits y sparkline de actividad — actualizado por WebSocket al instante.
-- **Agentes IA**: timeline unificado de sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto, con detección de sesiones en vivo (el orbe late cuando un agente trabaja).
-- **Vista "Hoy"** (tecla `T`): todas tus tareas, avisos git y agentes activos de todos los proyectos en un panel; añade tareas al vuelo con `@proyecto` y completa con un click.
-- **Tareas**: kanban por proyecto + sugeridas automáticas desde las sesiones de agentes + **issues de Jira** asignados a ti + **tareas de Microsoft Planner** (login 365 delegado). Completar en Nebula **cierra también en Jira/Planner** (write-back).
-- **Grafo de conocimiento**: renderiza en 3D el grafo de [Graphify](https://github.com/safishamsi/graphify) si existe `graphify-out/graph.json` en el repo.
-- **Obsidian**: encuentra notas de tus vaults que mencionan cada proyecto y las abre con `obsidian://`.
-- **Command palette**: `Ctrl+K` para saltar a proyectos, buscar tareas o crear una al vuelo.
-- **Panel /ajustes**: controla la dirección del sync (que Nebula pueda o no escribir en Jira/Planner), intervalos, eventos de notificación, carpetas y acceso desde otros dispositivos.
-- **Tour de bienvenida** (saltable) y ayuda permanente con la tecla `?`.
+> [!NOTE]
+> Nebula está en desarrollo activo. La configuración, las integraciones y algunas interfaces pueden cambiar entre versiones.
 
-## Uso
+<!--
+Añade aquí una captura o GIF cuando lo tengas disponible.
+
+<p align="center">
+  <img
+    src="docs/assets/nebula-overview.png"
+    alt="Vista principal de Nebula"
+    width="900"
+  />
+</p>
+-->
+
+## Índice
+
+- [Características](#características)
+- [Requisitos](#requisitos)
+- [Instalación rápida](#instalación-rápida)
+- [Primer arranque](#primer-arranque)
+- [Desarrollo](#desarrollo)
+- [Modo desatendido en Windows](#modo-desatendido-en-windows)
+- [Acceso desde móvil o tablet](#acceso-desde-móvil-o-tablet)
+- [Integraciones opcionales](#integraciones-opcionales)
+- [Atajos principales](#atajos-principales)
+- [Stack tecnológico](#stack-tecnológico)
+- [Arquitectura del repositorio](#arquitectura-del-repositorio)
+- [Seguridad y privacidad](#seguridad-y-privacidad)
+- [Documentación](#documentación)
+- [Contribución](#contribución)
+- [Licencia](#licencia)
+
+## Características
+
+- **Detección automática de repositorios**: selecciona carpetas desde la interfaz mediante el navegador integrado y Nebula localiza los repositorios Git. Los watchers detectan repositorios nuevos o eliminados sin reiniciar.
+- **Arte generativo por proyecto**: cada repositorio tiene una visual única y determinista creada con shaders GLSL y Three.js.
+- **ADN visual del repositorio**: los colores representan la mezcla de lenguajes; el tamaño refleja la complejidad; y el pulso muestra la actividad reciente.
+- **Git en tiempo real**: muestra rama actual, estado del working tree, ahead/behind, ramas, últimos commits y actividad reciente, actualizado mediante WebSocket.
+- **Agentes de IA**: unifica las sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto.
+- **Detección de sesiones activas**: el orbe de un proyecto late mientras un agente está trabajando.
+- **Vista Hoy**: reúne tareas, avisos Git y agentes activos de todos los proyectos.
+- **Creación rápida de tareas**: permite añadir tareas desde la vista Hoy utilizando `@proyecto`.
+- **Kanban por proyecto**: organiza tareas manuales, sugeridas por agentes y sincronizadas desde servicios externos.
+- **Integración con Jira**: importa issues asignados al usuario y permite cerrarlos desde Nebula mediante write-back.
+- **Integración con Microsoft Planner**: sincroniza tareas de Planner mediante autenticación delegada de Microsoft 365.
+- **Control de sincronización**: permite desactivar la escritura hacia Jira o Planner y utilizar las integraciones en modo de solo lectura.
+- **Grafo de conocimiento**: renderiza en 3D la salida de [Graphify](https://github.com/safishamsi/graphify) cuando existe `graphify-out/graph.json`.
+- **Integración con Obsidian**: encuentra notas relacionadas con cada proyecto y las abre mediante `obsidian://`.
+- **Command palette**: usa `Ctrl+K` para buscar proyectos, localizar tareas o crear una nueva.
+- **Panel de ajustes**: configura carpetas, sincronización, notificaciones, intervalos y acceso desde otros dispositivos.
+- **Experiencia responsive**: interfaz adaptada a escritorio, móvil y tablet.
+- **Tour de bienvenida y ayuda integrada**: onboarding saltable y ayuda permanente con la tecla `?`.
+
+## Requisitos
+
+- [Node.js](https://nodejs.org/) **24 o superior**
+- [pnpm](https://pnpm.io/)
+- [Git](https://git-scm.com/) disponible en el `PATH`
+
+Instalación global de pnpm:
 
 ```bash
-pnpm go           # instala + compila + arranca → http://localhost:4816
+npm install -g pnpm
 ```
 
-Desarrollo (hot reload): `pnpm dev` (UI en :5173, API en :4816).
+Las integraciones y agentes son opcionales. Si una herramienta no está instalada o configurada, Nebula continúa funcionando sin aportar datos de esa fuente.
 
-### Modo desatendido
+## Instalación rápida
 
 ```bash
-pnpm autostart:install    # arranca Nebula oculto al iniciar sesión en Windows
+git clone https://github.com/InigoSanz/project-manager.git
+cd project-manager
+pnpm go
+```
+
+`pnpm go`:
+
+1. instala las dependencias si es necesario;
+2. compila la interfaz si todavía no existe un build;
+3. inicia el servidor y la aplicación.
+
+Después abre:
+
+```text
+http://localhost:4816
+```
+
+## Primer arranque
+
+Al iniciar Nebula por primera vez:
+
+1. La aplicación intenta detectar automáticamente dónde se encuentran tus repositorios.
+2. Si no encuentra ninguno, muestra la opción **Elegir carpeta de proyectos**.
+3. Selecciona una carpeta raíz que contenga tus repositorios.
+4. Nebula escanea la ruta y añade los proyectos encontrados.
+5. Puedes añadir más carpetas desde **Ajustes**.
+
+La configuración se almacena en:
+
+```text
+~/.nebula/config.json
+```
+
+Los datos locales se almacenan en:
+
+```text
+~/.nebula/
+```
+
+## Desarrollo
+
+Instala las dependencias:
+
+```bash
+pnpm install
+```
+
+Inicia el entorno de desarrollo:
+
+```bash
+pnpm dev
+```
+
+Servicios disponibles:
+
+- Interfaz web con hot reload: `http://localhost:5173`
+- API y WebSocket: `http://localhost:4816`
+
+Comandos principales:
+
+```bash
+pnpm dev          # inicia todos los paquetes en modo desarrollo
+pnpm dev:web      # inicia únicamente la interfaz
+pnpm dev:server   # inicia únicamente el servidor
+pnpm typecheck    # comprueba los tipos del monorepo
+pnpm build        # compila la interfaz web
+pnpm start        # inicia el servidor en modo normal
+pnpm go           # instala, compila e inicia
+```
+
+## Modo desatendido en Windows
+
+Nebula puede iniciarse automáticamente y sin mostrar una terminal al comenzar la sesión de Windows.
+
+Instalar el arranque automático:
+
+```bash
+pnpm autostart:install
+```
+
+Eliminarlo:
+
+```bash
 pnpm autostart:uninstall
 ```
 
+La aplicación seguirá disponible en:
+
+```text
+http://localhost:4816
+```
+
+## Acceso desde móvil o tablet
+
+Nebula puede exponerse dentro de la red local:
+
+1. Abre **Ajustes**.
+2. Activa **Acceso desde la red local**.
+3. Reinicia el daemon.
+4. Escanea el código QR desde un dispositivo conectado a la misma red.
+
+> [!WARNING]
+> Activa el acceso LAN únicamente en redes de confianza. Cuando está habilitado, otros dispositivos de la red local pueden acceder a la aplicación.
+
+## Integraciones opcionales
+
+### Agentes de IA
+
+Nebula puede detectar sesiones de:
+
+- Claude Code
+- Codex CLI
+- Cursor
+- Gemini CLI
+- Antigravity
+
+No es necesario instalar todos los proveedores.
+
+### Jira
+
+Permite:
+
+- importar issues asignados al usuario;
+- asociarlos a repositorios;
+- mostrarlos como tareas del kanban;
+- cerrar issues desde Nebula mediante write-back.
+
+Puede configurarse en modo de solo lectura desactivando la escritura desde **Ajustes**.
+
+### Microsoft Planner
+
+Permite:
+
+- iniciar sesión mediante Microsoft 365;
+- sincronizar tareas asignadas;
+- completar tareas desde Nebula;
+- utilizar autenticación delegada, sin almacenar la contraseña del usuario.
+
+### Graphify
+
+Nebula renderiza el grafo cuando encuentra:
+
+```text
+graphify-out/graph.json
+```
+
+Ejemplo de generación:
+
+```bash
+uv tool install graphifyy
+cd tu-repositorio
+graphify map
+```
+
+### Obsidian
+
+Nebula busca notas relacionadas con cada proyecto en los vaults detectados y las abre mediante enlaces `obsidian://`.
+
+## Atajos principales
+
+| Atajo | Acción |
+|---|---|
+| `Ctrl+K` | Abrir la command palette |
+| `T` | Abrir la vista Hoy |
+| `?` | Abrir la ayuda |
+| `@proyecto` | Asociar una tarea rápida a un proyecto |
+
+## Stack tecnológico
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Three.js
+- React Three Fiber
+- Zustand
+- Framer Motion
+
+### Backend
+
+- Node.js
+- TypeScript
+- Fastify
+- WebSocket
+- SQLite
+- Chokidar
+
+### Organización
+
+- Monorepo con pnpm workspaces
+- Tipos compartidos entre servidor e interfaz
+- Datos locales almacenados en `~/.nebula/`
+
+## Arquitectura del repositorio
+
+```text
+.
+├── docs/       # documentación técnica y funcional
+├── scripts/    # arranque rápido y autostart de Windows
+├── server/     # daemon, API, WebSocket, SQLite e integraciones
+├── shared/     # tipos TypeScript compartidos
+└── web/        # interfaz React y visualización 3D
+```
+
+El servidor actúa como fuente de verdad:
+
+1. escanea los repositorios;
+2. analiza Git, lenguajes y actividad;
+3. persiste los datos en SQLite;
+4. observa cambios en repositorios y sesiones;
+5. publica eventos mediante WebSocket;
+6. actualiza la interfaz en tiempo real.
+
+Consulta [Arquitectura](docs/arquitectura.md) para una explicación detallada.
+
+## Seguridad y privacidad
+
+Nebula está diseñado para funcionar localmente.
+
+- Por defecto, el servidor escucha únicamente en `127.0.0.1`.
+- El acceso LAN está desactivado inicialmente.
+- Las credenciales de Jira se almacenan localmente en `~/.nebula/config.json`.
+- Los tokens de Microsoft se almacenan en `~/.nebula/msal-cache.json`.
+- No debes subir el contenido de `~/.nebula/` a un repositorio.
+- El write-back de Jira y Planner puede desactivarse.
+- Nebula solo realiza conexiones externas hacia los servicios que configures y hacia los remotos Git cuando habilitas operaciones como `fetch`.
+
+> [!CAUTION]
+> Las credenciales de Jira se guardan en texto plano en el equipo local. Protege tu cuenta de usuario, no compartas el archivo de configuración y revoca cualquier token expuesto.
+
+Consulta [Configuración](docs/configuracion.md) para conocer todos los detalles.
+
 ## Documentación
 
-Toda la documentación está en [`docs/`](docs/README.md): [instalación](docs/instalacion.md) · [configuración](docs/configuracion.md) · [arquitectura](docs/arquitectura.md) · [agentes](docs/agentes.md) · [integraciones (Graphify/Obsidian/Jira/Planner)](docs/integraciones.md) · [sistema visual](docs/visuales.md) · [API](docs/api.md) · [solución de problemas](docs/solucion-problemas.md).
+La documentación completa se encuentra en [`docs/`](docs/README.md):
 
-Requisitos: Node ≥ 24, pnpm, git. Los agentes/integraciones que no estén instalados simplemente no aportan datos (portable a cualquier equipo).
+- [Instalación](docs/instalacion.md)
+- [Configuración](docs/configuracion.md)
+- [Arquitectura](docs/arquitectura.md)
+- [Agentes de IA](docs/agentes.md)
+- [Integraciones](docs/integraciones.md)
+- [Sistema visual](docs/visuales.md)
+- [API](docs/api.md)
+- [Solución de problemas](docs/solucion-problemas.md)
+
+## Actualización
+
+Para actualizar una instalación existente:
+
+```bash
+git pull
+pnpm install
+pnpm build
+```
+
+Después reinicia el daemon.
+
+## Solución de problemas
+
+Antes de abrir una incidencia:
+
+1. revisa [Solución de problemas](docs/solucion-problemas.md);
+2. ejecuta `pnpm typecheck`;
+3. comprueba que Node.js y pnpm cumplen los requisitos;
+4. verifica que el puerto `4816` no está ocupado por otra aplicación.
+
+## Contribución
+
+Las contribuciones son bienvenidas.
+
+Flujo recomendado:
+
+```bash
+git clone https://github.com/InigoSanz/project-manager.git
+cd project-manager
+pnpm install
+pnpm typecheck
+pnpm build
+```
+
+Antes de enviar cambios:
+
+- mantén los commits centrados en una única responsabilidad;
+- actualiza la documentación cuando cambie el comportamiento;
+- verifica que `pnpm typecheck` termina correctamente;
+- verifica que `pnpm build` termina correctamente;
+- no incluyas credenciales, tokens ni contenido de `~/.nebula/`.
+
+Para cambios grandes, abre primero una issue explicando el problema y la solución propuesta.
+
+## Licencia
+
+Este proyecto se distribuye bajo la licencia [MIT](LICENSE).
+
+---
+
+Desarrollado por [Iñigo Sanz](https://github.com/InigoSanz).
