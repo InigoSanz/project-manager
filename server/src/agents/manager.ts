@@ -118,11 +118,16 @@ export class AgentsManager {
     for (const id of touchedProjects) this.events.onProjectUpdated(id);
   }
 
-  sessionsFor(projectId: string): AgentSession[] {
+  /** Sesiones en vivo ahora mismo (para la vista Hoy). */
+  liveSessions(): AgentSession[] {
     const rows = this.db
-      .prepare(`SELECT * FROM agent_sessions WHERE project_id = ? ORDER BY COALESCE(started_at, '') DESC LIMIT 200`)
-      .all(projectId) as any[];
-    return rows.map((r) => ({
+      .prepare(`SELECT * FROM agent_sessions WHERE status = 'live' ORDER BY COALESCE(ended_at,'') DESC LIMIT 10`)
+      .all() as any[];
+    return rows.map((r) => this.rowToSession(r));
+  }
+
+  private rowToSession(r: any): AgentSession {
+    return {
       id: r.id,
       agent: r.agent,
       sessionId: r.session_id,
@@ -136,7 +141,14 @@ export class AgentsManager {
       filesTouched: JSON.parse(r.files_touched ?? "[]"),
       status: r.status,
       sourcePath: r.source_path,
-    }));
+    };
+  }
+
+  sessionsFor(projectId: string): AgentSession[] {
+    const rows = this.db
+      .prepare(`SELECT * FROM agent_sessions WHERE project_id = ? ORDER BY COALESCE(started_at, '') DESC LIMIT 200`)
+      .all(projectId) as any[];
+    return rows.map((r) => this.rowToSession(r));
   }
 
   /** Vigila los directorios de sesiones para actividad en vivo. */

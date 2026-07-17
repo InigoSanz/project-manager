@@ -41,12 +41,19 @@ function OrbNode({ project, index, live }: { project: Project; index: number; li
             <div className="font-semibold text-white text-sm tracking-wide whitespace-nowrap drop-shadow-[0_0_8px_rgba(0,0,0,0.9)]">
               {project.name}
             </div>
-            {hovered && git && (
+            {hovered && (
               <div className="text-[10px] text-slate-300 whitespace-nowrap mt-0.5">
-                {git.branch ?? "detached"}
-                {git.ahead > 0 && ` ↑${git.ahead}`}
-                {git.behind > 0 && ` ↓${git.behind}`}
-                {!git.clean && " ● cambios"}
+                {git && (
+                  <>
+                    {git.branch ?? "detached"}
+                    {git.ahead > 0 && ` ↑${git.ahead}`}
+                    {git.behind > 0 && ` ↓${git.behind}`}
+                    {!git.clean && " ● cambios"}
+                  </>
+                )}
+                {project.tasks.open + project.tasks.suggested > 0 && (
+                  <span className="ml-1.5 text-sky-300">☰ {project.tasks.open + project.tasks.suggested} tareas</span>
+                )}
               </div>
             )}
           </div>

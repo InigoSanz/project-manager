@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Project, WsEvent, NebulaConfig } from "@nebula/shared";
+import { useToasts } from "../components/Toast";
 
 interface NebulaState {
   projects: Project[];
@@ -10,6 +11,8 @@ interface NebulaState {
   liveActivity: Record<string, number>;
   /** contador por proyecto: se incrementa con cada tasks.changed (para refetch) */
   tasksVersion: Record<string, number>;
+  /** nº de cosas accionables en Hoy (doing+todo+suggested+inbox) para el badge */
+  todayCount: number;
   init: () => void;
   rescan: () => Promise<void>;
   loadConfig: () => Promise<void>;
@@ -26,6 +29,7 @@ export const useNebula = create<NebulaState>((set, get) => ({
   config: null,
   liveActivity: {},
   tasksVersion: {},
+  todayCount: 0,
 
   init: () => {
     if (ws) return;
@@ -33,8 +37,22 @@ export const useNebula = create<NebulaState>((set, get) => ({
       .then((r) => r.json())
       .then((projects: Project[]) => set({ projects }))
       .catch(() => {});
+    let todayTimer: ReturnType<typeof setTimeout> | null = null;
     void get().loadConfig();
+    refreshTodayCount();
     connect();
+
+    function refreshTodayCount(): void {
+      if (todayTimer) clearTimeout(todayTimer);
+      todayTimer = setTimeout(() => {
+        void fetch("/api/today")
+          .then((r) => r.json())
+          .then((d: { doing: unknown[]; todo: unknown[]; suggested: unknown[]; inbox: unknown[] }) =>
+            set({ todayCount: d.doing.length + d.todo.length + d.suggested.length + d.inbox.length }),
+          )
+          .catch(() => {});
+      }, 400);
+    }
 
     function connect(): void {
       const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -73,6 +91,10 @@ export const useNebula = create<NebulaState>((set, get) => ({
                 [event.projectId]: (s.tasksVersion[event.projectId] ?? 0) + 1,
               },
             });
+            refreshTodayCount();
+            break;
+          case "toast":
+            useToasts.getState().push({ level: event.level, message: event.message, link: event.link });
             break;
           case "scan.state":
             set({ scanning: event.scanning });

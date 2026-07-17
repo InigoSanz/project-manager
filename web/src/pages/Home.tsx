@@ -6,7 +6,8 @@ import { GridView } from "../components/GridView";
 import { FolderPicker } from "../components/FolderPicker";
 
 export function Home() {
-  const { projects, scanning, connected, liveActivity, rescan, saveConfig, config, loadConfig } = useNebula();
+  const { projects, scanning, connected, liveActivity, rescan, saveConfig, config, loadConfig, todayCount } =
+    useNebula();
   const [view, setView] = useState<"galaxy" | "grid">("galaxy");
   const [pickerOpen, setPickerOpen] = useState(false);
   const present = projects.filter((p) => p.present);
@@ -43,6 +44,13 @@ export function Home() {
           />
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
+            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white"
+            title="Tu día: tareas, avisos y agentes (tecla T)"
+          >
+            ◔ Hoy{todayCount > 0 && <span className="ml-1.5 rounded-full bg-indigo-500/40 px-1.5 text-[10px]">{todayCount}</span>}
+          </button>
           <button
             onClick={() => void rescan()}
             className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"

@@ -59,6 +59,29 @@ export async function fetchMyIssues(cfg: JiraConfig): Promise<JiraIssue[]> {
   }));
 }
 
+/**
+ * Cierra un issue: busca entre sus transiciones disponibles la primera cuyo
+ * destino es de categoría Done y la ejecuta.
+ */
+export async function transitionToDone(cfg: JiraConfig, issueKey: string): Promise<void> {
+  const api = cfg.mode === "cloud" ? "3" : "2";
+  const url = `${base(cfg)}/rest/api/${api}/issue/${encodeURIComponent(issueKey)}/transitions`;
+  const res = await fetch(url, { headers: headers(cfg), signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} al listar transiciones`);
+  const data = (await res.json()) as { transitions?: Array<{ id: string; name: string; to?: { statusCategory?: { key?: string } } }> };
+  const done = (data.transitions ?? []).find((t) => t.to?.statusCategory?.key === "done");
+  if (!done) {
+    throw new Error("el flujo de trabajo no permite cerrar el issue desde su estado actual");
+  }
+  const post = await fetch(url, {
+    method: "POST",
+    headers: { ...headers(cfg), "Content-Type": "application/json" },
+    body: JSON.stringify({ transition: { id: done.id } }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!post.ok) throw new Error(`HTTP ${post.status} al ejecutar la transición «${done.name}»`);
+}
+
 const STATUS_MAP: Record<JiraIssue["statusCategory"], "todo" | "doing" | "done"> = {
   new: "todo",
   indeterminate: "doing",

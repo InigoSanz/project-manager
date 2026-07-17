@@ -65,12 +65,21 @@ export function ProjectPage() {
         </Canvas>
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5">
-          <Link
-            to="/"
-            className="pointer-events-auto glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
-          >
-            ← Galaxia
-          </Link>
+          <div className="pointer-events-auto flex gap-2">
+            <Link
+              to="/"
+              className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+            >
+              ← Galaxia
+            </Link>
+            <button
+              onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
+              className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+              title="Tu día (tecla T)"
+            >
+              ◔ Hoy
+            </button>
+          </div>
           {live && (
             <span className="glass animate-pulse rounded-lg px-3 py-1.5 text-xs text-emerald-300">
               ● agente trabajando

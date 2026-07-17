@@ -65,10 +65,12 @@ export function matchProject(cwd: string | null, projects: KnownProject[]): Know
   if (!cwd) return null;
   const norm = normalizeFsPath(cwd);
   let best: KnownProject | null = null;
+  let bestLen = -1;
   for (const p of projects) {
     const pp = normalizeFsPath(p.path);
-    if (norm === pp || norm.startsWith(pp + "/")) {
-      if (!best || pp.length > best.path.length) best = p;
+    if ((norm === pp || norm.startsWith(pp + "/")) && pp.length > bestLen) {
+      best = p;
+      bestLen = pp.length;
     }
   }
   return best;

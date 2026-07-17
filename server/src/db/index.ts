@@ -68,4 +68,7 @@ function migrate(db: Database.Database): void {
   const cols = (db.prepare(`PRAGMA table_info(projects)`).all() as Array<{ name: string }>).map((c) => c.name);
   if (!cols.includes("jira_key")) db.exec(`ALTER TABLE projects ADD COLUMN jira_key TEXT`);
   if (!cols.includes("jira_key_suggestion")) db.exec(`ALTER TABLE projects ADD COLUMN jira_key_suggestion TEXT`);
+
+  const taskCols = (db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>).map((c) => c.name);
+  if (!taskCols.includes("external_meta")) db.exec(`ALTER TABLE tasks ADD COLUMN external_meta TEXT`);
 }

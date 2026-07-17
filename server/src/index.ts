@@ -14,7 +14,7 @@ import { registerRoutes } from "./api/routes.js";
 import { fetchRemote } from "./git/index.js";
 import { AgentsManager } from "./agents/manager.js";
 import { TaskStore } from "./tasks/store.js";
-import { JiraSync, suggestJiraKey } from "./integrations/jira.js";
+import { JiraSync, suggestJiraKey, transitionToDone } from "./integrations/jira.js";
 import { PlannerSync } from "./integrations/planner.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,6 +98,46 @@ async function main(): Promise<void> {
     socket.send(JSON.stringify({ type: "projects.changed", projects: store.all() }));
   });
 
+  // write-back asíncrono al completar tareas externas desde Nebula
+  const onTaskCompleted = (task: import("@nebula/shared").TaskItem): void => {
+    if (task.source !== "jira" && task.source !== "planner") return;
+    void (async () => {
+      const jiraCfg = loadConfig().integrations?.jira;
+      try {
+        if (task.source === "jira" && task.sourceRef) {
+          if (!jiraCfg) throw new Error("Jira no está configurado");
+          await transitionToDone(jiraCfg, task.sourceRef);
+          hub.broadcast({
+            type: "toast",
+            level: "success",
+            message: `${task.sourceRef} cerrado en Jira ✓`,
+            link: `${jiraCfg.baseUrl.replace(/\/+$/, "")}/browse/${task.sourceRef}`,
+          });
+        } else if (task.source === "planner" && task.sourceRef) {
+          await planner.completeTask(task.sourceRef);
+          hub.broadcast({ type: "toast", level: "success", message: "Tarea completada en Planner ✓" });
+        }
+        tasks.setExternalMeta(task.id, { ...task.externalMeta, syncError: undefined });
+      } catch (err) {
+        const reason = (err as Error).message;
+        tasks.setExternalMeta(task.id, { ...task.externalMeta, syncError: reason });
+        hub.broadcast({
+          type: "toast",
+          level: "error",
+          message:
+            task.source === "jira"
+              ? `No se pudo cerrar ${task.sourceRef} en Jira: ${reason}`
+              : `No se pudo completar en Planner: ${reason}`,
+          link:
+            task.source === "jira" && jiraCfg
+              ? `${jiraCfg.baseUrl.replace(/\/+$/, "")}/browse/${task.sourceRef}`
+              : "https://tasks.office.com",
+        });
+      }
+      notifyTasksChanged(task.projectId);
+    })();
+  };
+
   registerRoutes(app, {
     store,
     scanner,
@@ -106,6 +146,7 @@ async function main(): Promise<void> {
     jira,
     planner,
     onTasksChanged: notifyTasksChanged,
+    onTaskCompleted,
     getConfig: () => cfg,
     setConfig: (next) => {
       cfg = next;

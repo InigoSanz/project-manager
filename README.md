@@ -8,7 +8,8 @@ Gestor visual **local** de proyectos/repositorios. Detecta automáticamente los 
 - **Arte generativo por proyecto**: cada repo tiene una visual única y determinista (shaders GLSL + three.js). Los colores salen de la mezcla de lenguajes, el tamaño de la complejidad, y el "pulso" de la actividad reciente (commits + sesiones de agentes IA).
 - **Git en vivo**: rama, ahead/behind, working tree, ramas, últimos commits y sparkline de actividad — actualizado por WebSocket al instante.
 - **Agentes IA**: timeline unificado de sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto, con detección de sesiones en vivo (el orbe late cuando un agente trabaja).
-- **Tareas**: kanban por proyecto + sugeridas automáticas desde las sesiones de agentes + **issues de Jira** asignados a ti + **tareas de Microsoft Planner** (login 365 delegado, solo lectura).
+- **Vista "Hoy"** (tecla `T`): todas tus tareas, avisos git y agentes activos de todos los proyectos en un panel; añade tareas al vuelo con `@proyecto` y completa con un click.
+- **Tareas**: kanban por proyecto + sugeridas automáticas desde las sesiones de agentes + **issues de Jira** asignados a ti + **tareas de Microsoft Planner** (login 365 delegado). Completar en Nebula **cierra también en Jira/Planner** (write-back).
 - **Grafo de conocimiento**: renderiza en 3D el grafo de [Graphify](https://github.com/safishamsi/graphify) si existe `graphify-out/graph.json` en el repo.
 - **Obsidian**: encuentra notas de tus vaults que mencionan cada proyecto y las abre con `obsidian://`.
 - **Command palette**: `Ctrl+K` para saltar a cualquier proyecto o acción.

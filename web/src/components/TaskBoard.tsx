@@ -58,7 +58,18 @@ function ExternalBadge({ task }: { task: TaskItem }) {
   return null;
 }
 
-function TaskCard({ task, onDelete }: { task: TaskItem; onDelete: () => void }) {
+const FLOW: TaskStatus[] = ["todo", "doing", "done"];
+
+function TaskCard({
+  task,
+  onDelete,
+  onMove,
+}: {
+  task: TaskItem;
+  onDelete: () => void;
+  onMove: (status: TaskStatus) => void;
+}) {
+  const idx = FLOW.indexOf(task.status);
   return (
     <motion.div
       layout
@@ -71,8 +82,19 @@ function TaskCard({ task, onDelete }: { task: TaskItem; onDelete: () => void }) 
       }}
       className="glass group cursor-grab rounded-lg p-3 active:cursor-grabbing"
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-slate-100">{task.title}</p>
+      <div className="flex items-start gap-2">
+        {task.status !== "done" && (
+          <button
+            onClick={() => onMove("done")}
+            title="Completar"
+            className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-600 text-[9px] text-transparent transition-colors hover:border-emerald-400 hover:text-emerald-400"
+          >
+            ✓
+          </button>
+        )}
+        <p className={`min-w-0 flex-1 text-sm ${task.status === "done" ? "text-slate-500 line-through" : "text-slate-100"}`}>
+          {task.title}
+        </p>
         <button
           onClick={onDelete}
           className="hidden shrink-0 text-slate-500 hover:text-rose-400 group-hover:block"
@@ -82,7 +104,30 @@ function TaskCard({ task, onDelete }: { task: TaskItem; onDelete: () => void }) 
         </button>
       </div>
       {task.notes && <p className="mt-1 line-clamp-3 text-xs whitespace-pre-line text-slate-400">{task.notes}</p>}
-      <ExternalBadge task={task} />
+      <div className="flex items-end justify-between">
+        <div className="min-w-0">
+          <ExternalBadge task={task} />
+          {task.externalMeta?.syncError && (
+            <span className="mt-2 ml-1 inline-block text-[10px] text-amber-400/90" title={task.externalMeta.syncError}>
+              ⚠ no sincronizada
+            </span>
+          )}
+        </div>
+        {idx >= 0 && (
+          <div className="hidden shrink-0 gap-1 group-hover:flex">
+            {idx > 0 && (
+              <button onClick={() => onMove(FLOW[idx - 1])} title="Mover atrás" className="rounded bg-white/5 px-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-white">
+                ‹
+              </button>
+            )}
+            {idx < FLOW.length - 1 && (
+              <button onClick={() => onMove(FLOW[idx + 1])} title="Mover adelante" className="rounded bg-white/5 px-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-white">
+                ›
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -163,12 +208,16 @@ export function TaskBoard({ project }: { project: Project }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/projects/${project.id}/tasks`)
-      .then((r) => r.json())
-      .then((t: TaskItem[]) => alive && setTasks(t))
-      .catch(() => {});
+    // pequeño debounce: no pisar el estado optimista en mitad de un drag
+    const timer = setTimeout(() => {
+      void fetch(`/api/projects/${project.id}/tasks`)
+        .then((r) => r.json())
+        .then((t: TaskItem[]) => alive && setTasks(t))
+        .catch(() => {});
+    }, 300);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, [project.id, version]);
 
@@ -283,7 +332,7 @@ export function TaskBoard({ project }: { project: Project }) {
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 <AnimatePresence>
                   {items.map((t) => (
-                    <TaskCard key={t.id} task={t} onDelete={() => void remove(t.id)} />
+                    <TaskCard key={t.id} task={t} onDelete={() => void remove(t.id)} onMove={(s) => void move(t.id, s)} />
                   ))}
                 </AnimatePresence>
                 {items.length === 0 && (

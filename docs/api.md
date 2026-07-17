@@ -22,11 +22,13 @@ Base: `http://localhost:4816`. Todo JSON. Los tipos exactos están en `shared/sr
 
 | Método y ruta | Descripción |
 |---|---|
+| `GET /api/today` | vista Hoy agregada: `{ doing, todo, suggested, inbox, attention, live }` |
 | `GET /api/projects/:id/tasks` | tareas del proyecto (excluye descartadas) |
 | `POST /api/projects/:id/tasks` | crear (`{ title, notes? }`) |
-| `PATCH /api/tasks/:taskId` | cambiar `title`/`notes`/`status` (suggested/todo/doing/done/dismissed) |
+| `PATCH /api/tasks/:taskId` | cambiar `title`/`notes`/`status`/`projectId` (reasignación). Poner `status: "done"` en una tarea jira/planner dispara el **write-back** al sistema origen |
 | `DELETE /api/tasks/:taskId` | eliminar |
-| `GET /api/inbox/tasks` | bandeja global: tareas Jira/Planner sin repo asociado |
+| `GET /api/inbox/tasks` | bandejas: tareas sin repo (jira-inbox, planner-inbox, inbox personal) |
+| `POST /api/inbox/tasks` | crear tarea en la bandeja personal |
 
 ## Integraciones
 
@@ -65,3 +67,4 @@ Al conectar se recibe un snapshot `projects.changed`. Eventos (`WsEvent` en shar
 | `agent.activity` | sesión de agente activa en un proyecto |
 | `tasks.changed` | tareas de un proyecto cambiaron (incluye syncs Jira/Planner) |
 | `scan.state` | `{ scanning: boolean }` |
+| `toast` | notificación para la UI: `{ level, message, link? }` (p. ej. resultado de un write-back) |

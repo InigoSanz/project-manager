@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { NebulaConfig } from "@nebula/shared";
+import type { NebulaConfig, TaskStatus, TodayData, TodayTask } from "@nebula/shared";
 import { getDetail } from "../git/index.js";
 import type { ProjectStore } from "../projects/store.js";
 import type { Scanner } from "../scanner/index.js";
@@ -23,6 +23,8 @@ export interface ApiDeps {
   getConfig: () => NebulaConfig;
   setConfig: (cfg: NebulaConfig) => void;
   onTasksChanged: (projectId: string) => void;
+  /** dispara el write-back asíncrono a Jira/Planner al completar una tarea */
+  onTaskCompleted: (task: import("@nebula/shared").TaskItem) => void;
 }
 
 export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
@@ -71,19 +73,36 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     },
   );
 
-  app.patch<{ Params: { taskId: string }; Body: { title?: string; notes?: string | null; status?: string } }>(
-    "/api/tasks/:taskId",
-    async (req, reply) => {
-      const allowed = ["suggested", "todo", "doing", "done", "dismissed"];
-      if (req.body?.status && !allowed.includes(req.body.status)) {
-        return reply.code(400).send({ error: "status inválido" });
-      }
-      const task = deps.tasks.update(req.params.taskId, req.body as any);
-      if (!task) return reply.code(404).send({ error: "not found" });
-      deps.onTasksChanged(task.projectId);
-      return task;
-    },
-  );
+  app.patch<{
+    Params: { taskId: string };
+    Body: { title?: string; notes?: string | null; status?: TaskStatus; projectId?: string };
+  }>("/api/tasks/:taskId", async (req, reply) => {
+    const allowed: TaskStatus[] = ["suggested", "todo", "doing", "done", "dismissed"];
+    const body = req.body ?? {};
+    if (body.status && !allowed.includes(body.status)) {
+      return reply.code(400).send({ error: "status inválido" });
+    }
+    if (body.projectId !== undefined) {
+      const validTarget = body.projectId === "inbox" || store.get(body.projectId)?.present;
+      if (!validTarget) return reply.code(400).send({ error: "projectId inválido" });
+    }
+    const before = deps.tasks.get(req.params.taskId);
+    if (!before) return reply.code(404).send({ error: "not found" });
+    const task = deps.tasks.update(req.params.taskId, {
+      title: body.title,
+      notes: body.notes,
+      status: body.status,
+      projectId: body.projectId,
+    });
+    if (!task) return reply.code(404).send({ error: "not found" });
+    if (before.projectId !== task.projectId) deps.onTasksChanged(before.projectId);
+    deps.onTasksChanged(task.projectId);
+    // write-back: cerrar en el sistema origen cuando se completa aquí
+    if (body.status === "done" && before.status !== "done") {
+      deps.onTaskCompleted(task);
+    }
+    return task;
+  });
 
   app.delete<{ Params: { taskId: string } }>("/api/tasks/:taskId", async (req, reply) => {
     const removed = deps.tasks.remove(req.params.taskId);
@@ -181,9 +200,53 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     return deps.planner.status;
   });
 
-  // ---- Bandeja global (issues/tareas externas sin repo asociado) ----
-  app.get("/api/inbox/tasks", async () => {
-    return deps.tasks.list("jira-inbox").concat(deps.tasks.list("planner-inbox"));
+  // ---- Bandejas (tareas sin repo asociado) ----
+  app.get("/api/inbox/tasks", async () => deps.tasks.inboxAll());
+
+  app.post<{ Body: { title?: string; notes?: string } }>("/api/inbox/tasks", async (req, reply) => {
+    const title = req.body?.title?.trim();
+    if (!title) return reply.code(400).send({ error: "title requerido" });
+    const task = deps.tasks.create("inbox", title, req.body?.notes?.trim() || null);
+    deps.onTasksChanged("inbox");
+    return task;
+  });
+
+  // ---- Vista Hoy: agregado de todo lo accionable en una llamada ----
+  app.get("/api/today", async (): Promise<TodayData> => {
+    const projects = store.all();
+    const nameById = new Map(projects.map((p) => [p.id, p.name]));
+    const withName = (t: ReturnType<typeof deps.tasks.get> & object): TodayTask => ({
+      ...(t as TodayTask),
+      projectName: nameById.get((t as TodayTask).projectId) ?? null,
+    });
+
+    const attention = projects
+      .filter((p) => p.git && (!p.git.clean || p.git.behind > 0 || p.git.conflicted > 0))
+      .map((p) => {
+        const reasons: string[] = [];
+        const g = p.git!;
+        if (g.conflicted > 0) reasons.push(`${g.conflicted} conflictos`);
+        if (g.staged + g.unstaged > 0) reasons.push(`${g.staged + g.unstaged} cambios sin commit`);
+        if (g.untracked > 0) reasons.push(`${g.untracked} ficheros nuevos`);
+        if (g.behind > 0) reasons.push(`${g.behind} commits por detrás`);
+        return { projectId: p.id, name: p.name, reasons };
+      });
+
+    const live = deps.agents.liveSessions().map((s) => ({
+      projectId: s.projectId,
+      projectName: nameById.get(s.projectId) ?? "?",
+      agent: s.agent,
+      title: s.title ?? s.firstPrompt,
+    }));
+
+    return {
+      doing: deps.tasks.byStatus("doing").map(withName),
+      todo: deps.tasks.byStatus("todo").map(withName),
+      suggested: deps.tasks.byStatus("suggested").map(withName),
+      inbox: deps.tasks.inboxAll().map(withName),
+      attention,
+      live,
+    };
   });
 
   app.get("/api/config", async () => loadConfig());

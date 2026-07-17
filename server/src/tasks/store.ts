@@ -12,6 +12,7 @@ interface TaskRow {
   source_ref: string | null;
   created_at: string;
   updated_at: string;
+  external_meta: string | null;
 }
 
 function toTask(r: TaskRow): TaskItem {
@@ -25,8 +26,12 @@ function toTask(r: TaskRow): TaskItem {
     sourceRef: r.source_ref,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    externalMeta: r.external_meta ? JSON.parse(r.external_meta) : null,
   };
 }
+
+/** Bandejas virtuales (tareas sin repo asociado). */
+export const INBOX_IDS = ["inbox", "jira-inbox", "planner-inbox"] as const;
 
 export class TaskStore {
   constructor(private db: DB) {}
@@ -54,18 +59,51 @@ export class TaskStore {
     return toTask(this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow);
   }
 
-  update(id: string, patch: Partial<Pick<TaskItem, "title" | "notes" | "status">>): TaskItem | null {
+  update(
+    id: string,
+    patch: Partial<Pick<TaskItem, "title" | "notes" | "status" | "projectId">>,
+  ): TaskItem | null {
     const row = this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow | undefined;
     if (!row) return null;
     const next = {
       title: patch.title ?? row.title,
       notes: patch.notes !== undefined ? patch.notes : row.notes,
       status: patch.status ?? row.status,
+      projectId: patch.projectId ?? row.project_id,
     };
     this.db
-      .prepare(`UPDATE tasks SET title = ?, notes = ?, status = ?, updated_at = ? WHERE id = ?`)
-      .run(next.title, next.notes, next.status, new Date().toISOString(), id);
+      .prepare(`UPDATE tasks SET title = ?, notes = ?, status = ?, project_id = ?, updated_at = ? WHERE id = ?`)
+      .run(next.title, next.notes, next.status, next.projectId, new Date().toISOString(), id);
     return toTask(this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow);
+  }
+
+  get(id: string): TaskItem | null {
+    const row = this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow | undefined;
+    return row ? toTask(row) : null;
+  }
+
+  setExternalMeta(id: string, meta: TaskItem["externalMeta"]): void {
+    this.db.prepare(`UPDATE tasks SET external_meta = ? WHERE id = ?`).run(meta ? JSON.stringify(meta) : null, id);
+  }
+
+  /** Tareas por estado en TODOS los proyectos (para la vista Hoy). */
+  byStatus(status: TaskStatus, excludeInbox = true, limit = 30): TaskItem[] {
+    const notIn = excludeInbox ? `AND project_id NOT IN ('inbox','jira-inbox','planner-inbox')` : "";
+    const rows = this.db
+      .prepare(`SELECT * FROM tasks WHERE status = ? ${notIn} ORDER BY updated_at DESC LIMIT ?`)
+      .all(status, limit) as TaskRow[];
+    return rows.map(toTask);
+  }
+
+  /** Tareas pendientes de todas las bandejas virtuales. */
+  inboxAll(): TaskItem[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM tasks WHERE project_id IN ('inbox','jira-inbox','planner-inbox')
+         AND status IN ('todo','doing','suggested') ORDER BY updated_at DESC LIMIT 50`,
+      )
+      .all() as TaskRow[];
+    return rows.map(toTask);
   }
 
   remove(id: string): TaskItem | null {

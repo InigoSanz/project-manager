@@ -142,6 +142,25 @@ export interface TaskItem {
   sourceRef: string | null;
   createdAt: string;
   updatedAt: string;
+  /** metadatos externos: { etag } de Planner, { syncError } si el write-back falló */
+  externalMeta: { etag?: string; syncError?: string } | null;
+}
+
+/** Tarea agregada en la vista Hoy: incluye el nombre del proyecto. */
+export interface TodayTask extends TaskItem {
+  projectName: string | null;
+}
+
+export interface TodayData {
+  doing: TodayTask[];
+  todo: TodayTask[];
+  suggested: TodayTask[];
+  /** jira-inbox + planner-inbox + inbox personal */
+  inbox: TodayTask[];
+  /** repos que requieren atención git */
+  attention: Array<{ projectId: string; name: string; reasons: string[] }>;
+  /** sesiones de agentes en vivo ahora mismo */
+  live: Array<{ projectId: string; projectName: string; agent: AgentKind; title: string | null }>;
 }
 
 // ---------- Integraciones ----------
@@ -220,4 +239,5 @@ export type WsEvent =
   | { type: "project.updated"; project: Project }
   | { type: "agent.activity"; projectId: string; session: AgentSession }
   | { type: "tasks.changed"; projectId: string }
-  | { type: "scan.state"; scanning: boolean };
+  | { type: "scan.state"; scanning: boolean }
+  | { type: "toast"; level: "success" | "error" | "info"; message: string; link?: string };

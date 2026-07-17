@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
+import { useToasts } from "./Toast";
+import { parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
 
 interface Command {
   id: string;
@@ -17,6 +19,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
   const input = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { projects, rescan } = useNebula();
+  const pushToast = useToasts((s) => s.push);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -51,6 +54,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
           hint: p.path,
           run: close(() => navigate(`/project/${p.id}`)),
         })),
+      { id: "today", label: "Abrir Hoy", hint: "tecla T", run: close(() => window.dispatchEvent(new Event("nebula:open-today"))) },
       { id: "home", label: "Ir a la galaxia", hint: "inicio", run: close(() => navigate("/")) },
       { id: "rescan", label: "Re-escanear proyectos", hint: "acción", run: close(() => void rescan()) },
       { id: "settings", label: "Ajustes", hint: "configuración", run: close(onOpenSettings) },
@@ -59,9 +63,28 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return commands;
-    return commands.filter((c) => c.label.toLowerCase().includes(q) || c.hint?.toLowerCase().includes(q));
-  }, [commands, query]);
+    const base = !q
+      ? commands
+      : commands.filter((c) => c.label.toLowerCase().includes(q) || c.hint?.toLowerCase().includes(q));
+    // texto libre → ofrecer crear tarea (con soporte @proyecto)
+    if (q.length >= 3) {
+      const parse = parseQuickAdd(query.trim(), projects);
+      if (parse.title) {
+        base.push({
+          id: "quick-add",
+          label: `➕ Crear tarea: «${parse.title}»`,
+          hint: `en ${parse.project?.name ?? "bandeja personal"}`,
+          run: () => {
+            void submitQuickAdd(parse).then((dest) =>
+              pushToast({ level: "success", message: `Tarea creada en ${dest}` }),
+            );
+            setOpen(false);
+          },
+        });
+      }
+    }
+    return base;
+  }, [commands, query, projects, pushToast]);
 
   const runSelected = (): void => filtered[Math.min(selected, filtered.length - 1)]?.run();
 

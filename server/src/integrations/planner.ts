@@ -8,7 +8,8 @@ import type { ProjectStore } from "../projects/store.js";
 
 /** Client público de Microsoft Graph PowerShell (preconsentido en muchos tenants). */
 const DEFAULT_CLIENT_ID = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
-const SCOPES = ["Tasks.Read"];
+// ReadWrite: permite marcar tareas como completadas desde Nebula (write-back)
+const SCOPES = ["Tasks.ReadWrite"];
 const CACHE_PATH = path.join(NEBULA_HOME, "msal-cache.json");
 const PLANNER_INBOX = "planner-inbox";
 
@@ -39,6 +40,7 @@ interface GraphTask {
   percentComplete: number;
   planId: string | null;
   dueDateTime: string | null;
+  etag: string | null;
 }
 
 export class PlannerSync {
@@ -160,6 +162,7 @@ export class PlannerSync {
         percentComplete: t.percentComplete ?? 0,
         planId: t.planId ?? null,
         dueDateTime: t.dueDateTime ?? null,
+        etag: t["@odata.etag"] ?? null,
       }));
       // nombres de planes (para mapear a repos por nombre)
       const planIds = [...new Set(tasks.map((t) => t.planId).filter(Boolean))] as string[];
@@ -209,6 +212,12 @@ export class PlannerSync {
         sourceRef: t.id,
         now,
       });
+      // etag necesario para el write-back (If-Match)
+      if (t.etag) {
+        this.db
+          .prepare(`UPDATE tasks SET external_meta = json_patch(COALESCE(external_meta,'{}'), ?) WHERE id = ?`)
+          .run(JSON.stringify({ etag: t.etag }), `planner:${t.id}`);
+      }
     }
 
     const stale = this.db
@@ -224,6 +233,35 @@ export class PlannerSync {
     this.status.lastSyncAt = now;
     this.status.taskCount = tasks.length;
     for (const id of touched) this.onTasksChanged(id);
+  }
+
+  /**
+   * Write-back: marca la tarea como completada en Planner.
+   * Lee la tarea fresca para obtener el etag actual (If-Match obligatorio).
+   */
+  async completeTask(graphTaskId: string): Promise<void> {
+    const token = await this.tokenSilent();
+    if (!token) throw new Error("No hay sesión de Microsoft 365 activa — reconecta desde Ajustes.");
+    const get = await fetch(`https://graph.microsoft.com/v1.0/planner/tasks/${encodeURIComponent(graphTaskId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!get.ok) throw new Error(`HTTP ${get.status} al leer la tarea de Planner`);
+    const fresh = (await get.json()) as { "@odata.etag"?: string };
+    const etag = fresh["@odata.etag"];
+    if (!etag) throw new Error("Planner no devolvió etag para la tarea");
+    const patch = await fetch(`https://graph.microsoft.com/v1.0/planner/tasks/${encodeURIComponent(graphTaskId)}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "If-Match": etag },
+      body: JSON.stringify({ percentComplete: 100 }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (patch.status === 403) {
+      throw new Error(
+        "Permiso insuficiente (Tasks.ReadWrite). Desconecta y vuelve a conectar Microsoft 365 desde Ajustes para conceder el nuevo permiso.",
+      );
+    }
+    if (!patch.ok) throw new Error(`HTTP ${patch.status} al completar la tarea en Planner`);
   }
 }
 
