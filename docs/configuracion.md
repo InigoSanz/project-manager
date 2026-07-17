@@ -1,6 +1,6 @@
 # Configuración
 
-Todo vive en `~/.nebula/config.json`. La UI (⚙ Ajustes) edita este fichero; también puedes tocarlo a mano (el daemon lo relee en cada operación).
+Todo vive en `~/.nebula/config.json`. La página **⚙ /ajustes** de la UI edita este fichero (guardado automático al cambiar cada control); también puedes tocarlo a mano (el daemon lo relee en cada operación). Secciones del panel: General, Sincronización, Notificaciones, Dispositivos y acceso.
 
 ```jsonc
 {
@@ -10,16 +10,24 @@ Todo vive en `~/.nebula/config.json`. La UI (⚙ Ajustes) edita este fichero; ta
   "autoFetchMinutes": 0,       // git fetch periódico; 0 = desactivado
   "port": 4816,                // puerto del daemon
   "lanAccess": false,          // true = accesible desde tu red local (móvil/tablet)
-  "notifications": true,       // toasts nativos de Windows (issues nuevos, agentes, vencimientos)
+  "notifications": true,       // toasts nativos de Windows (interruptor general)
+  "notificationEvents": {      // toggles finos por evento
+    "newExternalTask": true,   // issue/tarea externa nueva asignada
+    "agentDone": true,         // un agente termina una sesión con trabajo real
+    "dueDigest": true          // aviso diario de vencimientos
+  },
+  "syncMinutes": 10,           // minutos entre syncs de Jira/Planner
   "integrations": {
     "jira": {
       "mode": "cloud",                          // "cloud" | "server"
       "baseUrl": "https://miempresa.atlassian.net",
       "email": "yo@empresa.com",                // solo cloud
-      "token": "…"                              // API token (cloud) o PAT (server/DC)
+      "token": "…",                             // API token (cloud) o PAT (server/DC)
+      "writeBack": true                         // false = solo lectura: completar en Nebula no toca Jira
     },
     "planner": {
-      "clientId": ""            // vacío = client público de Graph PowerShell
+      "clientId": "",           // vacío = client público de Graph PowerShell
+      "writeBack": true         // false = solo lectura hacia Planner
     }
   }
 }

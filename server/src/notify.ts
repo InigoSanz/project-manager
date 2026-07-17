@@ -1,6 +1,9 @@
 import notifier from "node-notifier";
+import type { NotificationEvents } from "@nebula/shared";
 import { loadConfig } from "./config.js";
 import type { DB } from "./db/index.js";
+
+export type NotifyEvent = keyof NotificationEvents;
 
 /**
  * Notificaciones nativas de Windows (toasts vía node-notifier/SnoreToast).
@@ -12,8 +15,10 @@ export class Notifier {
     private port: number,
   ) {}
 
-  private enabled(): boolean {
-    return loadConfig().notifications !== false;
+  private enabled(event: NotifyEvent): boolean {
+    const cfg = loadConfig();
+    if (cfg.notifications === false) return false;
+    return cfg.notificationEvents?.[event] !== false;
   }
 
   /** true si es la primera vez que se notifica este id (y lo registra). */
@@ -35,8 +40,8 @@ export class Notifier {
     return Boolean(this.db.prepare(`SELECT 1 FROM notified WHERE id LIKE ? LIMIT 1`).get(`${prefix}%`));
   }
 
-  send(dedupId: string, title: string, message: string): void {
-    if (!this.enabled() || !this.firstTime(dedupId)) return;
+  send(event: NotifyEvent, dedupId: string, title: string, message: string): void {
+    if (!this.enabled(event) || !this.firstTime(dedupId)) return;
     try {
       // appID es específico de WindowsToaster y no está en los tipos genéricos
       const options = {
@@ -57,6 +62,6 @@ export class Notifier {
   dueTodayDigest(count: number): void {
     if (count <= 0) return;
     const today = new Date().toISOString().slice(0, 10);
-    this.send(`digest:${today}`, "⏱ Vencimientos de hoy", `Te vence${count === 1 ? "" : "n"} ${count} tarea${count === 1 ? "" : "s"} hoy. Pulsa para verlas.`);
+    this.send("dueDigest", `digest:${today}`, "⏱ Vencimientos de hoy", `Te vence${count === 1 ? "" : "n"} ${count} tarea${count === 1 ? "" : "s"} hoy. Pulsa para verlas.`);
   }
 }

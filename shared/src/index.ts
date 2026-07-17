@@ -194,11 +194,24 @@ export interface JiraConfig {
   email?: string;
   /** cloud: API token · server/DC: Personal Access Token */
   token: string;
+  /** false = solo lectura: completar en Nebula no toca Jira (default true) */
+  writeBack?: boolean;
 }
 
 export interface PlannerConfig {
   /** client_id de app registration propia; vacío = client público de Graph PowerShell */
   clientId?: string;
+  /** false = solo lectura: completar en Nebula no toca Planner (default true) */
+  writeBack?: boolean;
+}
+
+export interface NotificationEvents {
+  /** issue/tarea externa nueva asignada a ti */
+  newExternalTask: boolean;
+  /** un agente termina una sesión con trabajo real */
+  agentDone: boolean;
+  /** aviso diario de tareas que vencen hoy */
+  dueDigest: boolean;
 }
 
 export interface NebulaConfig {
@@ -212,6 +225,10 @@ export interface NebulaConfig {
   lanAccess: boolean;
   /** notificaciones nativas de Windows (tareas nuevas, agentes, vencimientos) */
   notifications: boolean;
+  /** toggles finos por evento; ausente = todos activos */
+  notificationEvents?: NotificationEvents;
+  /** minutos entre syncs de Jira/Planner (default 10) */
+  syncMinutes?: number;
   integrations?: {
     jira?: JiraConfig;
     planner?: PlannerConfig;

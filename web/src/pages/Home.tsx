@@ -66,9 +66,16 @@ export function Home() {
             ↻ Re-escanear
           </button>
           <button
+            onClick={() => window.dispatchEvent(new Event("nebula:open-help"))}
+            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
+            title="Ayuda (tecla ?)"
+          >
+            ?
+          </button>
+          <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-settings"))}
             className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
-            title="Ajustes (o Ctrl+K)"
+            title="Ajustes"
           >
             ⚙
           </button>

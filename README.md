@@ -12,7 +12,9 @@ Gestor visual **local** de proyectos/repositorios. Detecta automáticamente los 
 - **Tareas**: kanban por proyecto + sugeridas automáticas desde las sesiones de agentes + **issues de Jira** asignados a ti + **tareas de Microsoft Planner** (login 365 delegado). Completar en Nebula **cierra también en Jira/Planner** (write-back).
 - **Grafo de conocimiento**: renderiza en 3D el grafo de [Graphify](https://github.com/safishamsi/graphify) si existe `graphify-out/graph.json` en el repo.
 - **Obsidian**: encuentra notas de tus vaults que mencionan cada proyecto y las abre con `obsidian://`.
-- **Command palette**: `Ctrl+K` para saltar a cualquier proyecto o acción.
+- **Command palette**: `Ctrl+K` para saltar a proyectos, buscar tareas o crear una al vuelo.
+- **Panel /ajustes**: controla la dirección del sync (que Nebula pueda o no escribir en Jira/Planner), intervalos, eventos de notificación, carpetas y acceso desde otros dispositivos.
+- **Tour de bienvenida** (saltable) y ayuda permanente con la tecla `?`.
 
 ## Uso
 

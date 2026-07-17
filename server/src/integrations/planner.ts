@@ -242,7 +242,7 @@ export class PlannerSync {
         this.notifier.baseline(open.map((t) => `seen:planner:${t.id}`));
       } else {
         for (const t of open) {
-          this.notifier.send(`seen:planner:${t.id}`, "▦ Nueva tarea de Planner", t.title);
+          this.notifier.send("newExternalTask", `seen:planner:${t.id}`, "▦ Nueva tarea de Planner", t.title);
         }
       }
     }

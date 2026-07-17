@@ -111,8 +111,12 @@ async function main(): Promise<void> {
   // write-back asíncrono al completar tareas externas desde Nebula
   const onTaskCompleted = (task: import("@nebula/shared").TaskItem): void => {
     if (task.source !== "jira" && task.source !== "planner") return;
+    const integrations = loadConfig().integrations;
+    // write-back desactivado en ajustes: completar aquí no toca el sistema origen
+    if (task.source === "jira" && integrations?.jira?.writeBack === false) return;
+    if (task.source === "planner" && integrations?.planner?.writeBack === false) return;
     void (async () => {
-      const jiraCfg = loadConfig().integrations?.jira;
+      const jiraCfg = integrations?.jira;
       try {
         if (task.source === "jira" && task.sourceRef) {
           if (!jiraCfg) throw new Error("Jira no está configurado");
@@ -159,9 +163,16 @@ async function main(): Promise<void> {
     onTaskCompleted,
     getConfig: () => cfg,
     setConfig: (next) => {
+      // re-escanear solo si cambió lo que afecta al descubrimiento de repos;
+      // los toggles del panel (writeBack, notificaciones…) no deben relanzar nada
+      const scanChanged =
+        JSON.stringify([cfg.roots, cfg.scanDepth, cfg.excludes]) !==
+        JSON.stringify([next.roots, next.scanDepth, next.excludes]);
       cfg = next;
-      scanner.startWatching();
-      void scanner.fullScan();
+      if (scanChanged) {
+        scanner.startWatching();
+        void scanner.fullScan();
+      }
     },
   });
 
@@ -224,12 +235,17 @@ async function main(): Promise<void> {
 
   scheduleBackups(db);
 
-  // sync periódico de integraciones externas (10 min) + digest de vencimientos
+  // sync periódico de integraciones externas + digest de vencimientos.
+  // El tick es de 1 min y relee syncMinutes para que el ajuste aplique al vuelo.
+  let lastSyncAt = Date.now();
   setInterval(() => {
+    const minutes = Math.max(1, loadConfig().syncMinutes ?? 10);
+    if (Date.now() - lastSyncAt < minutes * 60_000) return;
+    lastSyncAt = Date.now();
     void jira.sync();
     void planner.sync();
     notifier.dueTodayDigest(tasks.dueToday().length);
-  }, 10 * 60_000).unref();
+  }, 60_000).unref();
 
   let lastFetchAt = 0;
   setInterval(() => {

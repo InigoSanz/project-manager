@@ -182,7 +182,7 @@ export class JiraSync {
         this.notifier.baseline(ids);
       } else {
         for (const issue of issues) {
-          this.notifier.send(`seen:jira:${issue.key}`, "◆ Nuevo issue de Jira", `${issue.key} · ${issue.summary}`);
+          this.notifier.send("newExternalTask", `seen:jira:${issue.key}`, "◆ Nuevo issue de Jira", `${issue.key} · ${issue.summary}`);
         }
       }
     }

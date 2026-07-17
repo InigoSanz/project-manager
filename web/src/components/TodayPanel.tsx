@@ -169,9 +169,18 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-white">◔ Hoy</h2>
-              <button onClick={onClose} className="text-slate-500 hover:text-white" title="Cerrar (Esc o T)">
-                ✕
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.dispatchEvent(new Event("nebula:open-help"))}
+                  className="text-slate-500 hover:text-white"
+                  title="Ayuda"
+                >
+                  ?
+                </button>
+                <button onClick={onClose} className="text-slate-500 hover:text-white" title="Cerrar (Esc o T)">
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Añadir rápido */}

@@ -14,6 +14,8 @@ const DEFAULTS: NebulaConfig = {
   port: 4816,
   lanAccess: false,
   notifications: true,
+  notificationEvents: { newExternalTask: true, agentDone: true, dueDigest: true },
+  syncMinutes: 10,
 };
 
 /**

@@ -119,6 +119,7 @@ export class AgentsManager {
             // sesión con trabajo real que acaba de terminar → toast nativo
             const project = this.store.get(s.projectId);
             this.notifier.send(
+              "agentDone",
               `session-done:${s.id}`,
               `${AGENT_LABEL[s.agent] ?? s.agent} terminó en ${project?.name ?? "un proyecto"}`,
               s.title ?? s.firstPrompt ?? `${s.toolUseCount} herramientas · ${s.filesTouched.length} ficheros`,
