@@ -6,37 +6,43 @@ import { rng } from "./dna";
 import "./NebulaMaterial";
 import type { NebulaMaterialImpl } from "./NebulaMaterial";
 
+export type Quality = "high" | "lite";
+
 interface Props {
   dna: VisualDNA;
   /** multiplicador de escala (hover, hero...) */
   scale?: number;
   /** pulso extra 0..1 (actividad de agente en vivo) */
   livePulse?: number;
+  /** lite = móvil/táctil: menos geometría y partículas, mismo look */
+  quality?: Quality;
 }
 
-function geometryFor(dna: VisualDNA): THREE.BufferGeometry {
+function geometryFor(dna: VisualDNA, quality: Quality): THREE.BufferGeometry {
+  const lite = quality === "lite";
   switch (dna.shape) {
     case "torus":
-      return new THREE.TorusKnotGeometry(dna.radius * 0.72, dna.radius * 0.26, 220, 36);
+      return new THREE.TorusKnotGeometry(dna.radius * 0.72, dna.radius * 0.26, lite ? 120 : 220, lite ? 20 : 36);
     case "crystal":
       return new THREE.IcosahedronGeometry(dna.radius, 1);
     case "cloud":
-      return new THREE.SphereGeometry(dna.radius, 96, 96);
+      return new THREE.SphereGeometry(dna.radius, lite ? 48 : 96, lite ? 48 : 96);
     case "rings":
     case "sphere":
     default:
-      return new THREE.SphereGeometry(dna.radius, 128, 128);
+      return new THREE.SphereGeometry(dna.radius, lite ? 64 : 128, lite ? 64 : 128);
   }
 }
 
 /** Anillo de partículas orbitando (energía del proyecto). */
-function OrbitingParticles({ dna }: { dna: VisualDNA }) {
+function OrbitingParticles({ dna, quality }: { dna: VisualDNA; quality: Quality }) {
   const points = useRef<THREE.Points>(null);
+  const count = quality === "lite" ? Math.ceil(dna.particleCount / 2) : dna.particleCount;
   const { positions, sizes } = useMemo(() => {
     const r = rng(dna.seed ^ 0x51ed270b);
-    const positions = new Float32Array(dna.particleCount * 3);
-    const sizes = new Float32Array(dna.particleCount);
-    for (let i = 0; i < dna.particleCount; i++) {
+    const positions = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
       const angle = r() * Math.PI * 2;
       const rad = dna.radius * (1.5 + r() * 1.6);
       const y = (r() - 0.5) * dna.radius * 0.9;
@@ -46,7 +52,7 @@ function OrbitingParticles({ dna }: { dna: VisualDNA }) {
       sizes[i] = 0.5 + r();
     }
     return { positions, sizes };
-  }, [dna]);
+  }, [dna, count]);
 
   useFrame((_, delta) => {
     if (points.current) points.current.rotation.y += delta * dna.speed * 0.35;
@@ -73,10 +79,10 @@ function OrbitingParticles({ dna }: { dna: VisualDNA }) {
   );
 }
 
-export function ProjectOrb({ dna, scale = 1, livePulse = 0 }: Props) {
+export function ProjectOrb({ dna, scale = 1, livePulse = 0, quality = "high" }: Props) {
   const material = useRef<NebulaMaterialImpl>(null);
   const group = useRef<THREE.Group>(null);
-  const geometry = useMemo(() => geometryFor(dna), [dna]);
+  const geometry = useMemo(() => geometryFor(dna, quality), [dna, quality]);
   const colors = useMemo(
     () => dna.colors.map((c) => new THREE.Color(c)) as [THREE.Color, THREE.Color, THREE.Color, THREE.Color],
     [dna],
@@ -119,7 +125,7 @@ export function ProjectOrb({ dna, scale = 1, livePulse = 0 }: Props) {
           <meshBasicMaterial color={dna.colors[1]} transparent opacity={0.6} />
         </mesh>
       )}
-      <OrbitingParticles dna={dna} />
+      <OrbitingParticles dna={dna} quality={quality} />
     </group>
   );
 }

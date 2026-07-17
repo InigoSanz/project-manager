@@ -18,6 +18,16 @@ body,
   color: #e6e8f2;
   font-family: var(--font-sans);
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* barras dinámicas de los navegadores móviles */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
 }
 
 ::selection {

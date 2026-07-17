@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { deriveDNA } from "../visuals/dna";
 import { ProjectOrb } from "../visuals/ProjectOrb";
+import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
 import { AgentTimeline } from "../components/AgentTimeline";
 import { TaskBoard } from "../components/TaskBoard";
@@ -26,6 +27,9 @@ export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const { projects, liveActivity } = useNebula();
   const [tab, setTab] = useState<Tab>("git");
+  const touch = useIsTouch();
+  const small = useIsSmallScreen();
+  const quality = touch || small ? ("lite" as const) : ("high" as const);
   const project = projects.find((p) => p.id === id);
   const dna = useMemo(() => (project ? deriveDNA(project) : null), [project]);
 
@@ -49,14 +53,14 @@ export function ProjectPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Hero con el orbe */}
-      <div className="relative h-[42%] shrink-0">
-        <Canvas camera={{ position: [0, 0.6, 4.2], fov: 45 }} dpr={[1, 2]}>
+      <div className="relative h-[42%] shrink-0 max-sm:h-[30%]">
+        <Canvas camera={{ position: [0, 0.6, 4.2], fov: 45 }} dpr={quality === "lite" ? [1, 1.5] : [1, 2]}>
           <color attach="background" args={["#05060f"]} />
           <ambientLight intensity={0.4} />
           <Suspense fallback={null}>
-            <Stars radius={60} depth={30} count={1800} factor={3} fade speed={0.5} />
+            <Stars radius={60} depth={30} count={quality === "lite" ? 800 : 1800} factor={3} fade speed={0.5} />
             <Float speed={1.4} rotationIntensity={0.25} floatIntensity={0.5}>
-              <ProjectOrb dna={dna} scale={1.15} livePulse={live ? 1 : 0} />
+              <ProjectOrb dna={dna} scale={1.15} livePulse={live ? 1 : 0} quality={quality} />
             </Float>
             <EffectComposer>
               <Bloom intensity={1.0} luminanceThreshold={0.25} luminanceSmoothing={0.8} mipmapBlur />
@@ -90,10 +94,10 @@ export function ProjectPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="pointer-events-none absolute bottom-4 left-6"
+          className="pointer-events-none absolute bottom-4 left-6 max-sm:right-4 max-sm:bottom-2 max-sm:left-4"
         >
-          <h1 className="font-display text-3xl font-bold text-white drop-shadow-lg">{project.name}</h1>
-          <p className="mt-1 text-xs text-slate-400">{project.path}</p>
+          <h1 className="font-display text-3xl font-bold text-white drop-shadow-lg max-sm:text-xl">{project.name}</h1>
+          <p className="mt-1 truncate text-xs text-slate-400">{project.path}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {project.git?.branch && (
               <span className="glass rounded-md px-2 py-0.5 text-[11px] text-slate-200">⎇ {project.git.branch}</span>
@@ -106,7 +110,7 @@ export function ProjectPage() {
           </div>
         </motion.div>
 
-        <div className="pointer-events-none absolute right-6 bottom-4 flex gap-6 text-right">
+        <div className="pointer-events-none absolute right-6 bottom-4 flex gap-6 text-right max-sm:hidden">
           <Stat label="ficheros" value={metrics?.fileCount ?? 0} />
           <Stat label="commits/30d" value={metrics?.commitsLast30d ?? 0} />
           <Stat label="sesiones IA" value={project.agents.total} />
@@ -131,13 +135,13 @@ export function ProjectPage() {
       </div>
 
       {/* Paneles */}
-      <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-6">
-        <nav className="mb-3 flex gap-1">
+      <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-6 max-sm:px-3 max-sm:pb-3">
+        <nav className="mb-3 flex gap-1 max-sm:snap-x max-sm:overflow-x-auto max-sm:pb-1 max-sm:whitespace-nowrap">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-lg px-4 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg px-4 py-1.5 text-sm transition-colors max-sm:snap-start ${
                 tab === t.id ? "bg-indigo-500/25 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
               }`}
             >

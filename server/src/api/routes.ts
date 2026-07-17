@@ -12,6 +12,7 @@ import { notesForProject } from "../integrations/obsidian.js";
 import type { JiraSync } from "../integrations/jira.js";
 import type { PlannerSync } from "../integrations/planner.js";
 import { suggestJiraKey } from "../integrations/jira.js";
+import { lanUrls } from "../lan.js";
 
 export interface ApiDeps {
   store: ProjectStore;
@@ -247,6 +248,11 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       attention,
       live,
     };
+  });
+
+  app.get("/api/lan-info", async () => {
+    const cfg = loadConfig();
+    return { enabled: cfg.lanAccess, urls: lanUrls(cfg.port) };
   });
 
   app.get("/api/config", async () => loadConfig());

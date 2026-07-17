@@ -12,6 +12,7 @@ const DEFAULTS: NebulaConfig = {
   excludes: ["node_modules", ".git", "dist", "build", "out", "vendor", ".venv", "venv", "__pycache__", "target", "bin", "obj", ".next", ".nuxt", "coverage"],
   autoFetchMinutes: 0,
   port: 4816,
+  lanAccess: false,
 };
 
 /**
@@ -66,14 +67,26 @@ function extractCwd(jsonlPath: string): string | null {
 
 export function loadConfig(): NebulaConfig {
   fs.mkdirSync(NEBULA_HOME, { recursive: true });
-  let cfg: NebulaConfig;
+  let raw: string | null = null;
   try {
-    cfg = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")) };
+    // tolerar BOM: PowerShell 5 y el Bloc de notas guardan UTF-8 con BOM
+    raw = fs.readFileSync(CONFIG_PATH, "utf8").replace(/^﻿/, "");
   } catch {
-    cfg = { ...DEFAULTS, roots: suggestRoots() };
-    saveConfig(cfg);
+    /* no existe: primera ejecución */
   }
-  return cfg;
+  if (raw === null) {
+    const cfg = { ...DEFAULTS, roots: suggestRoots() };
+    saveConfig(cfg);
+    return cfg;
+  }
+  try {
+    return { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch (err) {
+    // config corrupta: NUNCA sobrescribirla (el usuario podría perder sus ajustes);
+    // usar defaults en memoria y avisar
+    console.warn(`[config] ~/.nebula/config.json ilegible (${(err as Error).message}) — usando valores por defecto`);
+    return { ...DEFAULTS };
+  }
 }
 
 export function saveConfig(cfg: NebulaConfig): void {

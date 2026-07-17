@@ -97,7 +97,7 @@ function TaskCard({
         </p>
         <button
           onClick={onDelete}
-          className="hidden shrink-0 text-slate-500 hover:text-rose-400 group-hover:block"
+          className="hidden shrink-0 p-1 text-slate-500 group-hover:block hover:text-rose-400 pointer-coarse:block"
           title="Eliminar"
         >
           ✕
@@ -114,14 +114,14 @@ function TaskCard({
           )}
         </div>
         {idx >= 0 && (
-          <div className="hidden shrink-0 gap-1 group-hover:flex">
+          <div className="hidden shrink-0 gap-1 group-hover:flex pointer-coarse:flex">
             {idx > 0 && (
-              <button onClick={() => onMove(FLOW[idx - 1])} title="Mover atrás" className="rounded bg-white/5 px-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-white">
+              <button onClick={() => onMove(FLOW[idx - 1])} title="Mover atrás" className="rounded bg-white/5 px-1.5 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white pointer-coarse:px-2.5">
                 ‹
               </button>
             )}
             {idx < FLOW.length - 1 && (
-              <button onClick={() => onMove(FLOW[idx + 1])} title="Mover adelante" className="rounded bg-white/5 px-1.5 text-xs text-slate-400 hover:bg-white/10 hover:text-white">
+              <button onClick={() => onMove(FLOW[idx + 1])} title="Mover adelante" className="rounded bg-white/5 px-1.5 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white pointer-coarse:px-2.5">
                 ›
               </button>
             )}
@@ -303,8 +303,8 @@ export function TaskBoard({ project }: { project: Project }) {
         </button>
       </form>
 
-      {/* Kanban */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 gap-3">
+      {/* Kanban: 3 columnas en ≥sm; scroll horizontal con snap en móvil */}
+      <div className="min-h-0 flex-1 gap-3 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto sm:grid sm:grid-cols-3">
         {COLUMNS.map((col) => {
           const items = tasks.filter((t) => t.status === col.id);
           return (
@@ -321,7 +321,7 @@ export function TaskBoard({ project }: { project: Project }) {
                 const id = e.dataTransfer.getData("text/task-id");
                 if (id) void move(id, col.id);
               }}
-              className={`glass flex min-h-0 flex-col rounded-xl border-t-2 p-3 ${col.accent} ${
+              className={`glass flex min-h-0 flex-col rounded-xl border-t-2 p-3 max-sm:w-[85vw] max-sm:shrink-0 max-sm:snap-center ${col.accent} ${
                 dragOver === col.id ? "ring-1 ring-indigo-400/60" : ""
               }`}
             >

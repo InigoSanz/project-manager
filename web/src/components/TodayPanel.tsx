@@ -33,7 +33,7 @@ function TaskRow({ task, onChanged }: { task: TodayTask; onChanged: () => void }
       <button
         onClick={() => void complete()}
         title="Completar"
-        className={`mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border text-[10px] transition-all ${
+        className={`mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border text-[10px] transition-all pointer-coarse:h-6 pointer-coarse:w-6 ${
           done
             ? "scale-110 border-emerald-400 bg-emerald-400/20 text-emerald-300"
             : "border-slate-600 text-transparent hover:border-emerald-400 hover:text-emerald-400/60"
@@ -163,7 +163,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
             animate={{ x: 0 }}
             exit={{ x: 440 }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="glass fixed top-0 right-0 bottom-0 z-50 flex w-[420px] max-w-full flex-col border-l border-white/10 p-5"
+            className="glass fixed top-0 right-0 bottom-0 z-50 flex w-full flex-col border-l border-white/10 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:w-[420px]"
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-white">◔ Hoy</h2>
@@ -178,7 +178,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Añade una tarea…  (usa @proyecto)"
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-400/60 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-400/60 focus:outline-none max-sm:text-base"
               />
               {text.trim() && (
                 <p className="mt-1 text-[11px] text-slate-500">

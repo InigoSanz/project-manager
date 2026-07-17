@@ -15,6 +15,7 @@ import { fetchRemote } from "./git/index.js";
 import { AgentsManager } from "./agents/manager.js";
 import { TaskStore } from "./tasks/store.js";
 import { JiraSync, suggestJiraKey, transitionToDone } from "./integrations/jira.js";
+import { lanUrls } from "./lan.js";
 import { PlannerSync } from "./integrations/planner.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -168,7 +169,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    await app.listen({ port: cfg.port, host: "127.0.0.1" });
+    await app.listen({ port: cfg.port, host: cfg.lanAccess ? "0.0.0.0" : "127.0.0.1" });
   } catch (err: any) {
     if (err?.code === "EADDRINUSE") {
       if (await isNebulaAlreadyRunning(cfg.port)) {
@@ -184,6 +185,9 @@ async function main(): Promise<void> {
     throw err;
   }
   console.log(`🌌 Nebula escuchando en http://localhost:${cfg.port}`);
+  if (cfg.lanAccess) {
+    for (const url of lanUrls(cfg.port)) console.log(`   📱 En tu red local: ${url}`);
+  }
   console.log(`   Raíces: ${cfg.roots.join(" | ") || "(ninguna — configúralas en la UI o ~/.nebula/config.json)"}`);
 
   // Modo desatendido: escaneo inicial + watchers + fetch periódico opcional

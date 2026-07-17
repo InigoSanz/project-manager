@@ -41,6 +41,10 @@ pnpm autostart:uninstall   # lo elimina
 
 El daemon arranca sin ventana al iniciar sesión; la UI queda disponible en `http://localhost:4816` cuando la necesites. Si ya hay un Nebula corriendo, un segundo arranque lo detecta y sale limpiamente.
 
+## En el móvil y la tablet
+
+La UI es completamente responsive: barra de acciones inferior en el móvil, kanban con carrusel horizontal, controles táctiles siempre visibles y escena 3D en calidad adaptada. Para abrirla desde otro dispositivo: activa el acceso LAN y escanea el QR (ver [configuracion.md](configuracion.md#acceso-desde-el-móvil-o-la-tablet)).
+
 ## Actualizar
 
 ```bash

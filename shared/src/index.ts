@@ -204,6 +204,8 @@ export interface NebulaConfig {
   /** minutos entre `git fetch` automáticos; 0 = desactivado */
   autoFetchMinutes: number;
   port: number;
+  /** escuchar también en la red local (para abrir Nebula desde el móvil) */
+  lanAccess: boolean;
   integrations?: {
     jira?: JiraConfig;
     planner?: PlannerConfig;

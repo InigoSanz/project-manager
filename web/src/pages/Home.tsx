@@ -43,23 +43,31 @@ export function Home() {
             title={connected ? "conectado" : "desconectado"}
           />
         </div>
-        <div className="pointer-events-auto flex items-center gap-2">
+        {/* Acciones: arriba en desktop, barra inferior en móvil */}
+        <div className="pointer-events-auto flex items-center gap-2 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-0 max-sm:z-20 max-sm:justify-center max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white"
+            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
             title="Tu día: tareas, avisos y agentes (tecla T)"
           >
             ◔ Hoy{todayCount > 0 && <span className="ml-1.5 rounded-full bg-indigo-500/40 px-1.5 text-[10px]">{todayCount}</span>}
           </button>
           <button
+            onClick={() => window.dispatchEvent(new Event("nebula:open-palette"))}
+            className="glass hidden rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-colors hover:text-white max-sm:block"
+            title="Buscar proyecto o acción"
+          >
+            🔍
+          </button>
+          <button
             onClick={() => void rescan()}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:hidden"
           >
             ↻ Re-escanear
           </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-settings"))}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
             title="Ajustes (o Ctrl+K)"
           >
             ⚙
@@ -69,11 +77,12 @@ export function Home() {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1 transition-colors ${
+                className={`rounded-md px-3 py-1 transition-colors max-sm:px-3.5 max-sm:py-2 ${
                   view === v ? "bg-indigo-500/30 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
-                {v === "galaxy" ? "◉ Galaxia" : "▦ Grid"}
+                <span className="max-sm:hidden">{v === "galaxy" ? "◉ Galaxia" : "▦ Grid"}</span>
+                <span className="hidden max-sm:inline">{v === "galaxy" ? "◉" : "▦"}</span>
               </button>
             ))}
           </div>

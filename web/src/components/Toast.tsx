@@ -36,7 +36,7 @@ const STYLE: Record<ToastItem["level"], string> = {
 export function ToastStack() {
   const { toasts, dismiss } = useToasts();
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[80] flex w-96 flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 z-[80] flex flex-col gap-2 max-sm:inset-x-4 max-sm:bottom-[max(4.5rem,env(safe-area-inset-bottom))] sm:right-4 sm:w-96">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div

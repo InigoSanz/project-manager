@@ -1,0 +1,17 @@
+{
+  "name": "Nebula — tus proyectos",
+  "short_name": "Nebula",
+  "description": "Gestor visual local de proyectos y repositorios",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05060f",
+  "theme_color": "#05060f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import type { JiraConfig } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { FolderPicker } from "./FolderPicker";
 import { IntegrationsSettings } from "./IntegrationsSettings";
+import { QrModal } from "./QrModal";
+import { useToasts } from "./Toast";
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { config, loadConfig, saveConfig, rescan } = useNebula();
@@ -14,6 +16,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [jiraTouched, setJiraTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [lanAccess, setLanAccess] = useState(false);
+  const pushToast = useToasts((s) => s.push);
 
   useEffect(() => {
     if (open) void loadConfig();
@@ -26,6 +31,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setFetchMin(config.autoFetchMinutes);
       setJira(config.integrations?.jira);
       setJiraTouched(false);
+      setLanAccess(config.lanAccess ?? false);
     }
   }, [config]);
 
@@ -38,6 +44,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         .filter(Boolean),
       scanDepth: depth,
       autoFetchMinutes: fetchMin,
+      lanAccess,
       integrations: {
         ...config?.integrations,
         jira: jiraTouched ? jira : config?.integrations?.jira,
@@ -56,14 +63,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.96 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.96 }}
-            className="glass max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl p-6"
+            className="glass max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-2xl p-6 max-sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-white">Ajustes</h2>
@@ -117,6 +124,34 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               </div>
             </div>
 
+            <div className="mt-5 flex items-center justify-between rounded-xl border border-white/10 p-3">
+              <div className="min-w-0">
+                <p className="text-sm text-slate-200">📱 Acceso desde la red local</p>
+                <p className="text-[11px] text-slate-500">
+                  Abre Nebula desde el móvil/tablet en tu wifi. Se aplica al reiniciar el daemon.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => setQrOpen(true)}
+                  className="rounded-md bg-white/5 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-white/10"
+                  title="Ver QR para abrir en el móvil"
+                >
+                  QR
+                </button>
+                <button
+                  onClick={() => setLanAccess((v) => !v)}
+                  role="switch"
+                  aria-checked={lanAccess}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${lanAccess ? "bg-indigo-500/70" : "bg-white/10"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${lanAccess ? "left-5.5" : "left-0.5"}`}
+                  />
+                </button>
+              </div>
+            </div>
+
             <div className="mt-6 border-t border-white/10 pt-5">
               <IntegrationsSettings
                 jira={jira}
@@ -140,6 +175,18 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               </button>
             </div>
           </motion.div>
+          <QrModal
+            open={qrOpen}
+            onClose={() => setQrOpen(false)}
+            onEnableLan={() => {
+              setLanAccess(true);
+              setQrOpen(false);
+              pushToast({
+                level: "info",
+                message: "Acceso LAN activado — guarda los ajustes y reinicia Nebula para aplicarlo.",
+              });
+            }}
+          />
           <FolderPicker
             open={pickerOpen}
             onClose={() => setPickerOpen(false)}

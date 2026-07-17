@@ -22,18 +22,26 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
   const pushToast = useToasts((s) => s.push);
 
   useEffect(() => {
+    const openFresh = (): void => {
+      setOpen((o) => !o);
+      setQuery("");
+      setSelected(0);
+    };
     const onKey = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((o) => !o);
-        setQuery("");
-        setSelected(0);
+        openFresh();
       } else if (e.key === "Escape") {
         setOpen(false);
       }
     };
+    const onOpenEvent = (): void => openFresh();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("nebula:open-palette", onOpenEvent);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("nebula:open-palette", onOpenEvent);
+    };
   }, []);
 
   useEffect(() => {
@@ -95,7 +103,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[18vh] backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[18vh] backdrop-blur-sm max-sm:pt-[8dvh]"
           onClick={() => setOpen(false)}
         >
           <motion.div
@@ -124,7 +132,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
                 }
               }}
               placeholder="Saltar a proyecto, ejecutar acción…"
-              className="w-full border-b border-white/10 bg-transparent px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+              className="w-full border-b border-white/10 bg-transparent px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none max-sm:text-base"
             />
             <ul className="max-h-72 overflow-y-auto p-1.5">
               {filtered.map((c, i) => (

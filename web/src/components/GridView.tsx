@@ -16,7 +16,7 @@ function LanguageBar({ project }: { project: Project }) {
 
 export function GridView({ projects }: { projects: Project[] }) {
   return (
-    <div className="h-full overflow-y-auto p-8 pt-24">
+    <div className="h-full overflow-y-auto p-8 pt-24 max-sm:p-4 max-sm:pt-20 max-sm:pb-28">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p, i) => (
           <motion.div
