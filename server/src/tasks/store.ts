@@ -13,6 +13,8 @@ interface TaskRow {
   created_at: string;
   updated_at: string;
   external_meta: string | null;
+  due_date: string | null;
+  priority: number;
 }
 
 function toTask(r: TaskRow): TaskItem {
@@ -27,8 +29,13 @@ function toTask(r: TaskRow): TaskItem {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     externalMeta: r.external_meta ? JSON.parse(r.external_meta) : null,
+    dueDate: r.due_date,
+    priority: (r.priority ?? 0) as TaskItem["priority"],
   };
 }
+
+/** Orden útil: prioridad alta primero, luego lo que antes vence, luego lo reciente. */
+const USEFUL_ORDER = `priority DESC, CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date ASC, updated_at DESC`;
 
 /** Bandejas virtuales (tareas sin repo asociado). */
 export const INBOX_IDS = ["inbox", "jira-inbox", "planner-inbox"] as const;
@@ -41,27 +48,57 @@ export class TaskStore {
       .prepare(
         `SELECT * FROM tasks WHERE project_id = ? AND status != 'dismissed'
          ORDER BY CASE status WHEN 'suggested' THEN 0 WHEN 'doing' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END,
-                  updated_at DESC`,
+                  ${USEFUL_ORDER}`,
       )
       .all(projectId) as TaskRow[];
     return rows.map(toTask);
   }
 
-  create(projectId: string, title: string, notes: string | null, source: TaskItem["source"] = "manual", sourceRef: string | null = null, status: TaskStatus = "todo"): TaskItem {
+  /** Búsqueda para la palette: título y notas, sin descartadas. */
+  search(q: string, limit = 15): TaskItem[] {
+    const like = `%${q.replace(/[%_]/g, "")}%`;
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM tasks WHERE status != 'dismissed' AND (title LIKE ? OR notes LIKE ?)
+         ORDER BY CASE status WHEN 'doing' THEN 0 WHEN 'todo' THEN 1 WHEN 'suggested' THEN 2 ELSE 3 END,
+                  ${USEFUL_ORDER} LIMIT ?`,
+      )
+      .all(like, like, limit) as TaskRow[];
+    return rows.map(toTask);
+  }
+
+  /** Tareas abiertas que vencen hoy o antes (para la notificación diaria). */
+  dueToday(): TaskItem[] {
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = this.db
+      .prepare(`SELECT * FROM tasks WHERE status IN ('todo','doing') AND due_date IS NOT NULL AND due_date <= ?`)
+      .all(today) as TaskRow[];
+    return rows.map(toTask);
+  }
+
+  create(
+    projectId: string,
+    title: string,
+    notes: string | null,
+    source: TaskItem["source"] = "manual",
+    sourceRef: string | null = null,
+    status: TaskStatus = "todo",
+    extras: { dueDate?: string | null; priority?: TaskItem["priority"] } = {},
+  ): TaskItem {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     this.db
       .prepare(
-        `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, due_date, priority, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, projectId, title, notes, status, source, sourceRef, now, now);
+      .run(id, projectId, title, notes, status, source, sourceRef, extras.dueDate ?? null, extras.priority ?? 0, now, now);
     return toTask(this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow);
   }
 
   update(
     id: string,
-    patch: Partial<Pick<TaskItem, "title" | "notes" | "status" | "projectId">>,
+    patch: Partial<Pick<TaskItem, "title" | "notes" | "status" | "projectId" | "dueDate" | "priority">>,
   ): TaskItem | null {
     const row = this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow | undefined;
     if (!row) return null;
@@ -70,10 +107,14 @@ export class TaskStore {
       notes: patch.notes !== undefined ? patch.notes : row.notes,
       status: patch.status ?? row.status,
       projectId: patch.projectId ?? row.project_id,
+      dueDate: patch.dueDate !== undefined ? patch.dueDate : row.due_date,
+      priority: patch.priority !== undefined ? patch.priority : row.priority,
     };
     this.db
-      .prepare(`UPDATE tasks SET title = ?, notes = ?, status = ?, project_id = ?, updated_at = ? WHERE id = ?`)
-      .run(next.title, next.notes, next.status, next.projectId, new Date().toISOString(), id);
+      .prepare(
+        `UPDATE tasks SET title = ?, notes = ?, status = ?, project_id = ?, due_date = ?, priority = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(next.title, next.notes, next.status, next.projectId, next.dueDate, next.priority, new Date().toISOString(), id);
     return toTask(this.db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as TaskRow);
   }
 
@@ -90,7 +131,7 @@ export class TaskStore {
   byStatus(status: TaskStatus, excludeInbox = true, limit = 30): TaskItem[] {
     const notIn = excludeInbox ? `AND project_id NOT IN ('inbox','jira-inbox','planner-inbox')` : "";
     const rows = this.db
-      .prepare(`SELECT * FROM tasks WHERE status = ? ${notIn} ORDER BY updated_at DESC LIMIT ?`)
+      .prepare(`SELECT * FROM tasks WHERE status = ? ${notIn} ORDER BY ${USEFUL_ORDER} LIMIT ?`)
       .all(status, limit) as TaskRow[];
     return rows.map(toTask);
   }

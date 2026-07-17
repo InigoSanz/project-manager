@@ -13,6 +13,7 @@ const DEFAULTS: NebulaConfig = {
   autoFetchMinutes: 0,
   port: 4816,
   lanAccess: false,
+  notifications: true,
 };
 
 /**

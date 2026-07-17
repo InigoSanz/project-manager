@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import type { TodayTask } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { useToasts } from "./Toast";
 import { parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
+
+const STATUS_ICON: Record<string, string> = { todo: "○", doing: "◐", done: "✓", suggested: "✳" };
 
 interface Command {
   id: string;
@@ -16,6 +19,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
+  const [taskResults, setTaskResults] = useState<TodayTask[]>([]);
   const input = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { projects, rescan } = useNebula();
@@ -48,6 +52,22 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
     if (open) setTimeout(() => input.current?.focus(), 50);
   }, [open]);
 
+  // búsqueda de tareas con debounce
+  useEffect(() => {
+    const q = query.trim();
+    if (!open || q.length < 3) {
+      setTaskResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void fetch(`/api/search/tasks?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((t: TodayTask[]) => setTaskResults(t))
+        .catch(() => setTaskResults([]));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
   const commands = useMemo<Command[]>(() => {
     const close = (fn: () => void) => () => {
       fn();
@@ -72,9 +92,25 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     const base = !q
-      ? commands
+      ? [...commands]
       : commands.filter((c) => c.label.toLowerCase().includes(q) || c.hint?.toLowerCase().includes(q));
-    // texto libre → ofrecer crear tarea (con soporte @proyecto)
+    // resultados de tareas encontradas
+    for (const t of taskResults) {
+      base.push({
+        id: `task:${t.id}`,
+        label: `${STATUS_ICON[t.status] ?? "○"} ${t.title}`,
+        hint: t.projectName ?? "bandeja",
+        run: () => {
+          setOpen(false);
+          if (t.projectName) {
+            navigate(`/project/${t.projectId}?tab=tareas`);
+          } else {
+            window.dispatchEvent(new Event("nebula:open-today"));
+          }
+        },
+      });
+    }
+    // texto libre → ofrecer crear tarea (con soporte @proyecto !prio ^fecha)
     if (q.length >= 3) {
       const parse = parseQuickAdd(query.trim(), projects);
       if (parse.title) {
@@ -92,7 +128,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
       }
     }
     return base;
-  }, [commands, query, projects, pushToast]);
+  }, [commands, query, projects, pushToast, taskResults, navigate]);
 
   const runSelected = (): void => filtered[Math.min(selected, filtered.length - 1)]?.run();
 

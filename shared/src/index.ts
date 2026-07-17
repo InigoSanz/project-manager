@@ -144,6 +144,10 @@ export interface TaskItem {
   updatedAt: string;
   /** metadatos externos: { etag } de Planner, { syncError } si el write-back falló */
   externalMeta: { etag?: string; syncError?: string } | null;
+  /** vencimiento en ISO YYYY-MM-DD; null = sin fecha */
+  dueDate: string | null;
+  /** 0 ninguna · 1 baja · 2 media · 3 alta */
+  priority: 0 | 1 | 2 | 3;
 }
 
 /** Tarea agregada en la vista Hoy: incluye el nombre del proyecto. */
@@ -206,6 +210,8 @@ export interface NebulaConfig {
   port: number;
   /** escuchar también en la red local (para abrir Nebula desde el móvil) */
   lanAccess: boolean;
+  /** notificaciones nativas de Windows (tareas nuevas, agentes, vencimientos) */
+  notifications: boolean;
   integrations?: {
     jira?: JiraConfig;
     planner?: PlannerConfig;

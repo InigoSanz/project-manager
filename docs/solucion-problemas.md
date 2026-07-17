@@ -48,6 +48,23 @@ Para desconectar del todo: botón *Desconectar* o borra `~/.nebula/msal-cache.js
 
 Todo el código usa APIs de fichero nativas (sin URL-encoding), así que `C:\Users\Iñigo` funciona. Si un agente externo guarda sesiones con la ruta percent-encoded, el mapeo por `cwd` puede fallar para ese agente concreto — repórtalo con un ejemplo del fichero de sesión.
 
+## Restaurar un backup
+
+Nebula guarda copias rotativas (7) en `~/.nebula/backups/` al arrancar y cada 24 h:
+
+```bash
+# parar el daemon y restaurar
+copy %USERPROFILE%\.nebula\backups\nebula-AAAAMMDD-HHmm.db %USERPROFILE%\.nebula\nebula.db
+```
+
+Las tareas de Jira/Planner se re-sincronizan solas; el backup protege sobre todo tus tareas manuales.
+
+## No llegan las notificaciones de Windows
+
+- Comprueba el toggle 🔔 en Ajustes y `"notifications": true` en el config.
+- Windows → Configuración → Sistema → Notificaciones: el remitente "Nebula" (SnoreToast) debe estar permitido y el modo No molestar desactivado.
+- Cada aviso se emite una sola vez (deduplicado en BD); para re-probar, borra filas de la tabla `notified`.
+
 ## Empezar de cero
 
 ```bash

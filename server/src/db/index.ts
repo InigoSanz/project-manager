@@ -71,4 +71,9 @@ function migrate(db: Database.Database): void {
 
   const taskCols = (db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>).map((c) => c.name);
   if (!taskCols.includes("external_meta")) db.exec(`ALTER TABLE tasks ADD COLUMN external_meta TEXT`);
+  if (!taskCols.includes("due_date")) db.exec(`ALTER TABLE tasks ADD COLUMN due_date TEXT`);
+  if (!taskCols.includes("priority")) db.exec(`ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 0`);
+
+  // registro de notificaciones nativas ya emitidas (dedup)
+  db.exec(`CREATE TABLE IF NOT EXISTS notified (id TEXT PRIMARY KEY, at TEXT NOT NULL)`);
 }

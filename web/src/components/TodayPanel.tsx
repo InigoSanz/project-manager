@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { TodayData, TodayTask } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { useToasts } from "./Toast";
-import { parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
+import { describeParse, parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
+import { TaskMetaBadges } from "./TaskMeta";
 
 const SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
   jira: { label: "◆ Jira", cls: "bg-sky-500/15 text-sky-300" },
@@ -45,12 +46,13 @@ function TaskRow({ task, onChanged }: { task: TodayTask; onChanged: () => void }
         <p className={`truncate text-sm ${done ? "text-slate-500 line-through" : "text-slate-200"}`} title={task.title}>
           {task.title}
         </p>
-        <div className="mt-0.5 flex items-center gap-2 text-[10px]">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10px]">
           {task.projectName && (
             <Link to={`/project/${task.projectId}`} className="text-slate-500 hover:text-indigo-300">
               {task.projectName}
             </Link>
           )}
+          <TaskMetaBadges task={task} />
           {badge && <span className={`rounded px-1 py-px ${badge.cls}`}>{badge.label}</span>}
           {task.externalMeta?.syncError && (
             <span className="text-amber-400/80" title={task.externalMeta.syncError}>
@@ -184,8 +186,11 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                 <p className="mt-1 text-[11px] text-slate-500">
                   {parse.unknownMention
                     ? `@${parse.unknownMention} no casa con ningún proyecto — irá a tu bandeja personal`
-                    : `→ ${parse.project?.name ?? "tu bandeja personal"} · Enter para crear`}
+                    : `→ ${describeParse(parse)} · Enter para crear`}
                 </p>
+              )}
+              {!text.trim() && (
+                <p className="mt-1 text-[10px] text-slate-600">@proyecto · !alta/!media/!baja · ^hoy ^mañana ^vie ^25/07</p>
               )}
             </form>
 

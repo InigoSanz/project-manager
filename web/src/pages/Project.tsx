@@ -1,5 +1,5 @@
 import { Suspense, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { Float, Stars } from "@react-three/drei";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
@@ -26,7 +26,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const { projects, liveActivity } = useNebula();
-  const [tab, setTab] = useState<Tab>("git");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(TABS.some((t) => t.id === initialTab) ? (initialTab as Tab) : "git");
   const touch = useIsTouch();
   const small = useIsSmallScreen();
   const quality = touch || small ? ("lite" as const) : ("high" as const);

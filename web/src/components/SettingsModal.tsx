@@ -18,6 +18,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [pickerOpen, setPickerOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [lanAccess, setLanAccess] = useState(false);
+  const [notifications, setNotifications] = useState(true);
   const pushToast = useToasts((s) => s.push);
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setJira(config.integrations?.jira);
       setJiraTouched(false);
       setLanAccess(config.lanAccess ?? false);
+      setNotifications(config.notifications ?? true);
     }
   }, [config]);
 
@@ -45,6 +47,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       scanDepth: depth,
       autoFetchMinutes: fetchMin,
       lanAccess,
+      notifications,
       integrations: {
         ...config?.integrations,
         jira: jiraTouched ? jira : config?.integrations?.jira,
@@ -150,6 +153,25 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   />
                 </button>
               </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 p-3">
+              <div className="min-w-0">
+                <p className="text-sm text-slate-200">🔔 Notificaciones de Windows</p>
+                <p className="text-[11px] text-slate-500">
+                  Issues nuevos, agentes que terminan y vencimientos del día, aunque Nebula esté cerrada.
+                </p>
+              </div>
+              <button
+                onClick={() => setNotifications((v) => !v)}
+                role="switch"
+                aria-checked={notifications}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${notifications ? "bg-indigo-500/70" : "bg-white/10"}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${notifications ? "left-5.5" : "left-0.5"}`}
+                />
+              </button>
             </div>
 
             <div className="mt-6 border-t border-white/10 pt-5">

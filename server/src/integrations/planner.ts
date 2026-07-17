@@ -5,6 +5,7 @@ import type { PlannerConfig, PlannerStatus } from "@nebula/shared";
 import { NEBULA_HOME } from "../config.js";
 import type { DB } from "../db/index.js";
 import type { ProjectStore } from "../projects/store.js";
+import type { Notifier } from "../notify.js";
 
 /** Client público de Microsoft Graph PowerShell (preconsentido en muchos tenants). */
 const DEFAULT_CLIENT_ID = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
@@ -63,6 +64,7 @@ export class PlannerSync {
     private store: ProjectStore,
     private getConfig: () => PlannerConfig | undefined,
     private onTasksChanged: (projectId: string) => void,
+    private notifier?: Notifier,
   ) {}
 
   private app(): PublicClientApplication {
@@ -188,10 +190,11 @@ export class PlannerSync {
     const seen = new Set<string>();
     const touched = new Set<string>();
     const upsert = this.db.prepare(
-      `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, created_at, updated_at)
-       VALUES (@id, @projectId, @title, @notes, @status, 'planner', @sourceRef, @now, @now)
+      `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, due_date, created_at, updated_at)
+       VALUES (@id, @projectId, @title, @notes, @status, 'planner', @sourceRef, @dueDate, @now, @now)
        ON CONFLICT(id) DO UPDATE SET
-         title = excluded.title, status = excluded.status, notes = excluded.notes, updated_at = excluded.updated_at`,
+         title = excluded.title, status = excluded.status, notes = excluded.notes,
+         due_date = excluded.due_date, updated_at = excluded.updated_at`,
     );
 
     for (const t of tasks) {
@@ -205,11 +208,10 @@ export class PlannerSync {
         id: `planner:${t.id}`,
         projectId,
         title: t.title.slice(0, 200),
-        notes: [planName && `Plan: ${planName}`, t.dueDateTime && `Vence: ${t.dueDateTime.slice(0, 10)}`]
-          .filter(Boolean)
-          .join(" · ") || null,
+        notes: (planName && `Plan: ${planName}`) || null,
         status,
         sourceRef: t.id,
+        dueDate: t.dueDateTime ? t.dueDateTime.slice(0, 10) : null,
         now,
       });
       // etag necesario para el write-back (If-Match)
@@ -233,6 +235,17 @@ export class PlannerSync {
     this.status.lastSyncAt = now;
     this.status.taskCount = tasks.length;
     for (const id of touched) this.onTasksChanged(id);
+
+    if (this.notifier) {
+      const open = tasks.filter((t) => t.percentComplete < 100);
+      if (!this.notifier.hasBaseline("seen:planner:")) {
+        this.notifier.baseline(open.map((t) => `seen:planner:${t.id}`));
+      } else {
+        for (const t of open) {
+          this.notifier.send(`seen:planner:${t.id}`, "▦ Nueva tarea de Planner", t.title);
+        }
+      }
+    }
   }
 
   /**

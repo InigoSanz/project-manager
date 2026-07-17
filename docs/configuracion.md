@@ -10,6 +10,7 @@ Todo vive en `~/.nebula/config.json`. La UI (⚙ Ajustes) edita este fichero; ta
   "autoFetchMinutes": 0,       // git fetch periódico; 0 = desactivado
   "port": 4816,                // puerto del daemon
   "lanAccess": false,          // true = accesible desde tu red local (móvil/tablet)
+  "notifications": true,       // toasts nativos de Windows (issues nuevos, agentes, vencimientos)
   "integrations": {
     "jira": {
       "mode": "cloud",                          // "cloud" | "server"

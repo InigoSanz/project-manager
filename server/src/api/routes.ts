@@ -61,22 +61,32 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     return deps.tasks.list(req.params.id);
   });
 
-  app.post<{ Params: { id: string }; Body: { title?: string; notes?: string } }>(
-    "/api/projects/:id/tasks",
-    async (req, reply) => {
-      const project = store.get(req.params.id);
-      if (!project) return reply.code(404).send({ error: "not found" });
-      const title = req.body?.title?.trim();
-      if (!title) return reply.code(400).send({ error: "title requerido" });
-      const task = deps.tasks.create(req.params.id, title, req.body?.notes?.trim() || null);
-      deps.onTasksChanged(req.params.id);
-      return task;
-    },
-  );
+  app.post<{
+    Params: { id: string };
+    Body: { title?: string; notes?: string; dueDate?: string | null; priority?: 0 | 1 | 2 | 3 };
+  }>("/api/projects/:id/tasks", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    const title = req.body?.title?.trim();
+    if (!title) return reply.code(400).send({ error: "title requerido" });
+    const task = deps.tasks.create(req.params.id, title, req.body?.notes?.trim() || null, "manual", null, "todo", {
+      dueDate: req.body?.dueDate ?? null,
+      priority: req.body?.priority ?? 0,
+    });
+    deps.onTasksChanged(req.params.id);
+    return task;
+  });
 
   app.patch<{
     Params: { taskId: string };
-    Body: { title?: string; notes?: string | null; status?: TaskStatus; projectId?: string };
+    Body: {
+      title?: string;
+      notes?: string | null;
+      status?: TaskStatus;
+      projectId?: string;
+      dueDate?: string | null;
+      priority?: 0 | 1 | 2 | 3;
+    };
   }>("/api/tasks/:taskId", async (req, reply) => {
     const allowed: TaskStatus[] = ["suggested", "todo", "doing", "done", "dismissed"];
     const body = req.body ?? {};
@@ -89,11 +99,19 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     }
     const before = deps.tasks.get(req.params.taskId);
     if (!before) return reply.code(404).send({ error: "not found" });
+    if (body.dueDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(body.dueDate)) {
+      return reply.code(400).send({ error: "dueDate debe ser YYYY-MM-DD" });
+    }
+    if (body.priority !== undefined && ![0, 1, 2, 3].includes(body.priority)) {
+      return reply.code(400).send({ error: "priority inválida" });
+    }
     const task = deps.tasks.update(req.params.taskId, {
       title: body.title,
       notes: body.notes,
       status: body.status,
       projectId: body.projectId,
+      dueDate: body.dueDate,
+      priority: body.priority,
     });
     if (!task) return reply.code(404).send({ error: "not found" });
     if (before.projectId !== task.projectId) deps.onTasksChanged(before.projectId);
@@ -204,12 +222,25 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
   // ---- Bandejas (tareas sin repo asociado) ----
   app.get("/api/inbox/tasks", async () => deps.tasks.inboxAll());
 
-  app.post<{ Body: { title?: string; notes?: string } }>("/api/inbox/tasks", async (req, reply) => {
-    const title = req.body?.title?.trim();
-    if (!title) return reply.code(400).send({ error: "title requerido" });
-    const task = deps.tasks.create("inbox", title, req.body?.notes?.trim() || null);
-    deps.onTasksChanged("inbox");
-    return task;
+  app.post<{ Body: { title?: string; notes?: string; dueDate?: string | null; priority?: 0 | 1 | 2 | 3 } }>(
+    "/api/inbox/tasks",
+    async (req, reply) => {
+      const title = req.body?.title?.trim();
+      if (!title) return reply.code(400).send({ error: "title requerido" });
+      const task = deps.tasks.create("inbox", title, req.body?.notes?.trim() || null, "manual", null, "todo", {
+        dueDate: req.body?.dueDate ?? null,
+        priority: req.body?.priority ?? 0,
+      });
+      deps.onTasksChanged("inbox");
+      return task;
+    },
+  );
+
+  app.get<{ Querystring: { q?: string } }>("/api/search/tasks", async (req) => {
+    const q = req.query.q?.trim() ?? "";
+    if (q.length < 2) return [];
+    const nameById = new Map(store.all().map((p) => [p.id, p.name]));
+    return deps.tasks.search(q).map((t) => ({ ...t, projectName: nameById.get(t.projectId) ?? null }));
   });
 
   // ---- Vista Hoy: agregado de todo lo accionable en una llamada ----

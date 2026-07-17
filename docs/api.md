@@ -23,9 +23,10 @@ Base: `http://localhost:4816`. Todo JSON. Los tipos exactos están en `shared/sr
 | Método y ruta | Descripción |
 |---|---|
 | `GET /api/today` | vista Hoy agregada: `{ doing, todo, suggested, inbox, attention, live }` |
+| `GET /api/search/tasks?q=` | búsqueda de tareas (título+notas, ≥2 caracteres, máx 15) |
 | `GET /api/projects/:id/tasks` | tareas del proyecto (excluye descartadas) |
-| `POST /api/projects/:id/tasks` | crear (`{ title, notes? }`) |
-| `PATCH /api/tasks/:taskId` | cambiar `title`/`notes`/`status`/`projectId` (reasignación). Poner `status: "done"` en una tarea jira/planner dispara el **write-back** al sistema origen |
+| `POST /api/projects/:id/tasks` | crear (`{ title, notes?, dueDate?, priority? }`) |
+| `PATCH /api/tasks/:taskId` | cambiar `title`/`notes`/`status`/`projectId`/`dueDate` (YYYY-MM-DD)/`priority` (0-3). Poner `status: "done"` en una tarea jira/planner dispara el **write-back** al sistema origen |
 | `DELETE /api/tasks/:taskId` | eliminar |
 | `GET /api/inbox/tasks` | bandejas: tareas sin repo (jira-inbox, planner-inbox, inbox personal) |
 | `POST /api/inbox/tasks` | crear tarea en la bandeja personal |

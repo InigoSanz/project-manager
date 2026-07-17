@@ -16,6 +16,8 @@ import { AgentsManager } from "./agents/manager.js";
 import { TaskStore } from "./tasks/store.js";
 import { JiraSync, suggestJiraKey, transitionToDone } from "./integrations/jira.js";
 import { lanUrls } from "./lan.js";
+import { scheduleBackups } from "./backup.js";
+import { Notifier } from "./notify.js";
 import { PlannerSync } from "./integrations/planner.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -78,17 +80,24 @@ async function main(): Promise<void> {
     if (project) hub.broadcast({ type: "project.updated", project });
   };
 
-  const jira = new JiraSync(db, store, () => loadConfig().integrations?.jira, notifyTasksChanged);
-  const planner = new PlannerSync(db, store, () => loadConfig().integrations?.planner, notifyTasksChanged);
+  const notifier = new Notifier(db, cfg.port);
+  const jira = new JiraSync(db, store, () => loadConfig().integrations?.jira, notifyTasksChanged, notifier);
+  const planner = new PlannerSync(db, store, () => loadConfig().integrations?.planner, notifyTasksChanged, notifier);
 
-  const agents = new AgentsManager(db, store, tasks, {
-    onActivity: (projectId, session) => hub.broadcast({ type: "agent.activity", projectId, session }),
-    onProjectUpdated: (id) => {
-      const project = store.get(id);
-      if (project) hub.broadcast({ type: "project.updated", project });
+  const agents = new AgentsManager(
+    db,
+    store,
+    tasks,
+    {
+      onActivity: (projectId, session) => hub.broadcast({ type: "agent.activity", projectId, session }),
+      onProjectUpdated: (id) => {
+        const project = store.get(id);
+        if (project) hub.broadcast({ type: "project.updated", project });
+      },
+      onTasksChanged: notifyTasksChanged,
     },
-    onTasksChanged: notifyTasksChanged,
-  });
+    notifier,
+  );
 
   const app = Fastify({ logger: { level: "warn" } });
   await app.register(cors, { origin: true });
@@ -210,12 +219,16 @@ async function main(): Promise<void> {
       await planner.restore();
       await jira.sync();
       await planner.sync();
+      notifier.dueTodayDigest(tasks.dueToday().length);
     });
 
-  // sync periódico de integraciones externas (10 min)
+  scheduleBackups(db);
+
+  // sync periódico de integraciones externas (10 min) + digest de vencimientos
   setInterval(() => {
     void jira.sync();
     void planner.sync();
+    notifier.dueTodayDigest(tasks.dueToday().length);
   }, 10 * 60_000).unref();
 
   let lastFetchAt = 0;

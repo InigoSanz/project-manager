@@ -3,12 +3,21 @@ import type { AgentSession } from "@nebula/shared";
 import type { DB } from "../db/index.js";
 import type { ProjectStore } from "../projects/store.js";
 import type { TaskStore } from "../tasks/store.js";
+import type { Notifier } from "../notify.js";
 import { ClaudeProvider } from "./claude.js";
 import { CodexProvider } from "./codex.js";
 import { CursorProvider } from "./cursor.js";
 import { GeminiProvider } from "./gemini.js";
 import { AntigravityProvider } from "./antigravity.js";
 import type { AgentProvider, SessionCache } from "./types.js";
+
+const AGENT_LABEL: Record<string, string> = {
+  claude: "✳ Claude Code",
+  codex: "⌁ Codex",
+  cursor: "▮ Cursor",
+  gemini: "✦ Gemini",
+  antigravity: "◒ Antigravity",
+};
 
 export interface AgentsEvents {
   onActivity: (projectId: string, session: AgentSession) => void;
@@ -33,6 +42,7 @@ export class AgentsManager {
     private store: ProjectStore,
     private tasks: TaskStore,
     private events: AgentsEvents,
+    private notifier?: Notifier,
   ) {
     this.cache = {
       get: (sourcePath, mtimeMs, size) => {
@@ -105,6 +115,14 @@ export class AgentsManager {
           } else if (s.status === "live") {
             // sigue viva: refrescar pulso
             this.events.onActivity(s.projectId, s);
+          } else if (s.status === "done" && prevLive.has(s.id) && s.toolUseCount >= 10 && this.notifier) {
+            // sesión con trabajo real que acaba de terminar → toast nativo
+            const project = this.store.get(s.projectId);
+            this.notifier.send(
+              `session-done:${s.id}`,
+              `${AGENT_LABEL[s.agent] ?? s.agent} terminó en ${project?.name ?? "un proyecto"}`,
+              s.title ?? s.firstPrompt ?? `${s.toolUseCount} herramientas · ${s.filesTouched.length} ficheros`,
+            );
           }
         }
       }

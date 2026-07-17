@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import type { JiraConfig, JiraStatus } from "@nebula/shared";
 import type { DB } from "../db/index.js";
 import type { ProjectStore } from "../projects/store.js";
+import type { Notifier } from "../notify.js";
 
 const run = promisify(execFile);
 const ISSUE_KEY_RE = /\b([A-Z][A-Z0-9]{1,9})-\d+\b/g;
@@ -12,6 +13,7 @@ interface JiraIssue {
   summary: string;
   statusCategory: "new" | "indeterminate" | "done";
   updated: string;
+  dueDate: string | null;
 }
 
 function headers(cfg: JiraConfig): Record<string, string> {
@@ -41,7 +43,7 @@ export async function whoAmI(cfg: JiraConfig): Promise<string> {
 /** Issues abiertos asignados a mí. */
 export async function fetchMyIssues(cfg: JiraConfig): Promise<JiraIssue[]> {
   const jql = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
-  const fields = "summary,status,updated";
+  const fields = "summary,status,updated,duedate";
   let url: string;
   if (cfg.mode === "cloud") {
     url = `${base(cfg)}/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${fields}&maxResults=100`;
@@ -56,6 +58,7 @@ export async function fetchMyIssues(cfg: JiraConfig): Promise<JiraIssue[]> {
     summary: i.fields?.summary ?? "(sin resumen)",
     statusCategory: (i.fields?.status?.statusCategory?.key ?? "new") as JiraIssue["statusCategory"],
     updated: i.fields?.updated ?? new Date().toISOString(),
+    dueDate: i.fields?.duedate ?? null,
   }));
 }
 
@@ -96,6 +99,7 @@ export class JiraSync {
     private store: ProjectStore,
     private getConfig: () => JiraConfig | undefined,
     private onTasksChanged: (projectId: string) => void,
+    private notifier?: Notifier,
   ) {}
 
   async test(cfg: JiraConfig): Promise<JiraStatus> {
@@ -132,10 +136,11 @@ export class JiraSync {
     const touched = new Set<string>();
 
     const upsert = this.db.prepare(
-      `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, created_at, updated_at)
-       VALUES (@id, @projectId, @title, @notes, @status, 'jira', @sourceRef, @now, @now)
+      `INSERT INTO tasks (id, project_id, title, notes, status, source, source_ref, due_date, created_at, updated_at)
+       VALUES (@id, @projectId, @title, @notes, @status, 'jira', @sourceRef, @dueDate, @now, @now)
        ON CONFLICT(id) DO UPDATE SET
-         title = excluded.title, status = excluded.status, project_id = excluded.project_id, updated_at = excluded.updated_at`,
+         title = excluded.title, status = excluded.status, project_id = excluded.project_id,
+         due_date = excluded.due_date, updated_at = excluded.updated_at`,
     );
 
     for (const issue of issues) {
@@ -150,6 +155,7 @@ export class JiraSync {
         notes: null,
         status: STATUS_MAP[issue.statusCategory],
         sourceRef: issue.key,
+        dueDate: issue.dueDate,
         now,
       });
     }
@@ -168,6 +174,18 @@ export class JiraSync {
     this.status.lastSyncAt = now;
     this.status.issueCount = issues.length;
     for (const id of touched) this.onTasksChanged(id);
+
+    // notificar issues nuevos (el primer sync solo establece la línea base)
+    if (this.notifier) {
+      const ids = issues.map((i) => `seen:jira:${i.key}`);
+      if (!this.notifier.hasBaseline("seen:jira:")) {
+        this.notifier.baseline(ids);
+      } else {
+        for (const issue of issues) {
+          this.notifier.send(`seen:jira:${issue.key}`, "◆ Nuevo issue de Jira", `${issue.key} · ${issue.summary}`);
+        }
+      }
+    }
   }
 }
 

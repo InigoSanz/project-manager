@@ -2,6 +2,7 @@ import { useEffect, useState, type DragEvent, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Project, TaskItem, TaskStatus } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
+import { TaskMetaBadges, TaskMetaEditor } from "./TaskMeta";
 
 const COLUMNS: Array<{ id: TaskStatus; label: string; accent: string }> = [
   { id: "todo", label: "Pendiente", accent: "border-t-sky-400/60" },
@@ -64,10 +65,12 @@ function TaskCard({
   task,
   onDelete,
   onMove,
+  onMetaSaved,
 }: {
   task: TaskItem;
   onDelete: () => void;
   onMove: (status: TaskStatus) => void;
+  onMetaSaved: () => void;
 }) {
   const idx = FLOW.indexOf(task.status);
   return (
@@ -106,6 +109,10 @@ function TaskCard({
       {task.notes && <p className="mt-1 line-clamp-3 text-xs whitespace-pre-line text-slate-400">{task.notes}</p>}
       <div className="flex items-end justify-between">
         <div className="min-w-0">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <TaskMetaBadges task={task} />
+            <TaskMetaEditor task={task} onSaved={onMetaSaved} />
+          </div>
           <ExternalBadge task={task} />
           {task.externalMeta?.syncError && (
             <span className="mt-2 ml-1 inline-block text-[10px] text-amber-400/90" title={task.externalMeta.syncError}>
@@ -205,6 +212,13 @@ export function TaskBoard({ project }: { project: Project }) {
   const [newTitle, setNewTitle] = useState("");
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const version = useNebula((s) => s.tasksVersion[project.id] ?? 0);
+
+  const refetch = (): void => {
+    void fetch(`/api/projects/${project.id}/tasks`)
+      .then((r) => r.json())
+      .then((t: TaskItem[]) => setTasks(t))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     let alive = true;
@@ -332,7 +346,13 @@ export function TaskBoard({ project }: { project: Project }) {
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 <AnimatePresence>
                   {items.map((t) => (
-                    <TaskCard key={t.id} task={t} onDelete={() => void remove(t.id)} onMove={(s) => void move(t.id, s)} />
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      onDelete={() => void remove(t.id)}
+                      onMove={(s) => void move(t.id, s)}
+                      onMetaSaved={refetch}
+                    />
                   ))}
                 </AnimatePresence>
                 {items.length === 0 && (
