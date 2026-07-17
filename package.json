@@ -1,0 +1,21 @@
+{
+  "name": "nebula",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nebula — gestor visual local de proyectos/repositorios",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "dev:server": "pnpm --filter @nebula/server dev",
+    "dev:web": "pnpm --filter @nebula/web dev",
+    "build": "pnpm --filter @nebula/web build",
+    "start": "pnpm --filter @nebula/server start",
+    "typecheck": "pnpm -r typecheck",
+    "go": "node scripts/go.mjs",
+    "autostart:install": "node scripts/install-autostart.mjs",
+    "autostart:uninstall": "node scripts/install-autostart.mjs --uninstall"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

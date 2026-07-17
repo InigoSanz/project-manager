@@ -1,0 +1,197 @@
+import type { FastifyInstance } from "fastify";
+import type { NebulaConfig } from "@nebula/shared";
+import { getDetail } from "../git/index.js";
+import type { ProjectStore } from "../projects/store.js";
+import type { Scanner } from "../scanner/index.js";
+import type { AgentsManager } from "../agents/manager.js";
+import type { TaskStore } from "../tasks/store.js";
+import { loadConfig, saveConfig } from "../config.js";
+import { registerFsRoutes } from "./fs.js";
+import { readGraph } from "../integrations/graphify.js";
+import { notesForProject } from "../integrations/obsidian.js";
+import type { JiraSync } from "../integrations/jira.js";
+import type { PlannerSync } from "../integrations/planner.js";
+import { suggestJiraKey } from "../integrations/jira.js";
+
+export interface ApiDeps {
+  store: ProjectStore;
+  scanner: Scanner;
+  agents: AgentsManager;
+  tasks: TaskStore;
+  jira: JiraSync;
+  planner: PlannerSync;
+  getConfig: () => NebulaConfig;
+  setConfig: (cfg: NebulaConfig) => void;
+  onTasksChanged: (projectId: string) => void;
+}
+
+export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
+  const { store, scanner } = deps;
+
+  app.get("/api/health", async () => ({ ok: true, name: "nebula" }));
+
+  registerFsRoutes(app);
+
+  app.get("/api/projects", async () => store.all());
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    return project;
+  });
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id/git", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+    return getDetail(project.path);
+  });
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id/sessions", async (req, reply) => {
+    const project = deps.store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    return deps.agents.sessionsFor(req.params.id);
+  });
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id/tasks", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    return deps.tasks.list(req.params.id);
+  });
+
+  app.post<{ Params: { id: string }; Body: { title?: string; notes?: string } }>(
+    "/api/projects/:id/tasks",
+    async (req, reply) => {
+      const project = store.get(req.params.id);
+      if (!project) return reply.code(404).send({ error: "not found" });
+      const title = req.body?.title?.trim();
+      if (!title) return reply.code(400).send({ error: "title requerido" });
+      const task = deps.tasks.create(req.params.id, title, req.body?.notes?.trim() || null);
+      deps.onTasksChanged(req.params.id);
+      return task;
+    },
+  );
+
+  app.patch<{ Params: { taskId: string }; Body: { title?: string; notes?: string | null; status?: string } }>(
+    "/api/tasks/:taskId",
+    async (req, reply) => {
+      const allowed = ["suggested", "todo", "doing", "done", "dismissed"];
+      if (req.body?.status && !allowed.includes(req.body.status)) {
+        return reply.code(400).send({ error: "status inválido" });
+      }
+      const task = deps.tasks.update(req.params.taskId, req.body as any);
+      if (!task) return reply.code(404).send({ error: "not found" });
+      deps.onTasksChanged(task.projectId);
+      return task;
+    },
+  );
+
+  app.delete<{ Params: { taskId: string } }>("/api/tasks/:taskId", async (req, reply) => {
+    const removed = deps.tasks.remove(req.params.taskId);
+    if (!removed) return reply.code(404).send({ error: "not found" });
+    deps.onTasksChanged(removed.projectId);
+    return { deleted: true };
+  });
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id/graph", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    const graph = readGraph(project.path);
+    if (!graph) return reply.code(204).send();
+    return graph;
+  });
+
+  app.get<{ Params: { id: string } }>("/api/projects/:id/notes", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    return notesForProject(project.name);
+  });
+
+  app.post("/api/scan", async () => {
+    void scanner.fullScan();
+    return { started: true };
+  });
+
+  app.post<{ Params: { id: string } }>("/api/projects/:id/refresh", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    await scanner.analyzeOne(project.path);
+    return store.get(req.params.id);
+  });
+
+  // ---- Jira ----
+  app.get("/api/jira/status", async () => deps.jira.status);
+
+  app.post<{ Body: { mode?: string; baseUrl?: string; email?: string; token?: string } }>(
+    "/api/jira/test",
+    async (req, reply) => {
+      const { baseUrl, token } = req.body ?? {};
+      if (!baseUrl || !token) return reply.code(400).send({ error: "baseUrl y token requeridos" });
+      const mode = req.body.mode === "server" ? "server" : "cloud";
+      return deps.jira.test({ mode, baseUrl, email: req.body.email, token });
+    },
+  );
+
+  app.post("/api/jira/sync", async () => {
+    await deps.jira.sync();
+    return deps.jira.status;
+  });
+
+  app.patch<{ Params: { id: string }; Body: { jiraKey?: string | null } }>(
+    "/api/projects/:id",
+    async (req, reply) => {
+      const project = store.get(req.params.id);
+      if (!project) return reply.code(404).send({ error: "not found" });
+      if (req.body && "jiraKey" in req.body) {
+        const key = req.body.jiraKey?.trim().toUpperCase() || null;
+        store.setJiraKey(req.params.id, key);
+        store.setJiraKeySuggestion(req.params.id, null);
+        void deps.jira.sync();
+      }
+      return store.get(req.params.id);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>("/api/projects/:id/jira-suggest", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    const suggestion = await suggestJiraKey(project.path);
+    store.setJiraKeySuggestion(req.params.id, suggestion);
+    return { suggestion };
+  });
+
+  // ---- Planner ----
+  app.get("/api/planner/status", async () => deps.planner.status);
+
+  app.post("/api/planner/connect", async () => {
+    deps.planner.startConnect();
+    // el device code tarda un instante en llegar del servidor de Microsoft
+    for (let i = 0; i < 20 && !deps.planner.status.userCode && deps.planner.status.state === "pending"; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return deps.planner.status;
+  });
+
+  app.post("/api/planner/disconnect", async () => {
+    deps.planner.disconnect();
+    return deps.planner.status;
+  });
+
+  app.post("/api/planner/sync", async () => {
+    await deps.planner.sync();
+    return deps.planner.status;
+  });
+
+  // ---- Bandeja global (issues/tareas externas sin repo asociado) ----
+  app.get("/api/inbox/tasks", async () => {
+    return deps.tasks.list("jira-inbox").concat(deps.tasks.list("planner-inbox"));
+  });
+
+  app.get("/api/config", async () => loadConfig());
+
+  app.put<{ Body: Partial<NebulaConfig> }>("/api/config", async (req) => {
+    const cfg = { ...loadConfig(), ...req.body };
+    saveConfig(cfg);
+    deps.setConfig(cfg);
+    return cfg;
+  });
+}

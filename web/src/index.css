@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --color-void: #05060f;
+  --color-panel: #0c0e1dcc;
+  --color-line: #ffffff14;
+  --color-glow: #7c8cff;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-void);
+  color: #e6e8f2;
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+::selection {
+  background: #7c8cff55;
+}
+
+/* Scrollbars discretos para los paneles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2e4a transparent;
+}
+
+.glass {
+  background: var(--color-panel);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-line);
+}
