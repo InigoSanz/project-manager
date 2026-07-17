@@ -4,9 +4,6 @@
 
 Nebula detecta automáticamente los repositorios Git de tu máquina y representa cada proyecto como un orbe procedural generado a partir de su ADN: lenguajes, tamaño, complejidad y actividad reciente.
 
-> [!NOTE]
-> Nebula está en desarrollo activo. La configuración, las integraciones y algunas interfaces pueden cambiar entre versiones.
-
 <!--
 Añade aquí una captura o GIF cuando lo tengas disponible.
 
@@ -34,7 +31,6 @@ Añade aquí una captura o GIF cuando lo tengas disponible.
 - [Arquitectura del repositorio](#arquitectura-del-repositorio)
 - [Seguridad y privacidad](#seguridad-y-privacidad)
 - [Documentación](#documentación)
-- [Contribución](#contribución)
 - [Licencia](#licencia)
 
 ## Características
@@ -211,7 +207,13 @@ Permite:
 - iniciar sesión mediante Microsoft 365;
 - sincronizar tareas asignadas;
 - completar tareas desde Nebula;
-- utilizar autenticación delegada, sin almacenar la contraseña del usuario.
+- utilizar autenticación delegada de Microsoft 365.
+
+La caché de tokens se almacena localmente en:
+
+```text
+~/.nebula/msal-cache.json
+```
 
 ### Graphify
 
@@ -336,36 +338,13 @@ Después reinicia el daemon.
 
 ## Solución de problemas
 
-Antes de abrir una incidencia:
+Consulta [Solución de problemas](docs/solucion-problemas.md).
 
-1. revisa [Solución de problemas](docs/solucion-problemas.md);
-2. ejecuta `pnpm typecheck`;
-3. comprueba que Node.js y pnpm cumplen los requisitos;
-4. verifica que el puerto `4816` no está ocupado por otra aplicación.
+Comprobaciones básicas:
 
-## Contribución
-
-Las contribuciones son bienvenidas.
-
-Flujo recomendado:
-
-```bash
-git clone https://github.com/InigoSanz/project-manager.git
-cd project-manager
-pnpm install
-pnpm typecheck
-pnpm build
-```
-
-Antes de enviar cambios:
-
-- mantén los commits centrados en una única responsabilidad;
-- actualiza la documentación cuando cambie el comportamiento;
-- verifica que `pnpm typecheck` termina correctamente;
-- verifica que `pnpm build` termina correctamente;
-- no incluyas credenciales, tokens ni contenido de `~/.nebula/`.
-
-Para cambios grandes, abre primero una issue explicando el problema y la solución propuesta.
+1. ejecuta `pnpm typecheck`;
+2. comprueba que Node.js y pnpm cumplen los requisitos;
+3. verifica que el puerto `4816` no está ocupado por otra aplicación.
 
 ## Licencia
 
