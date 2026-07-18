@@ -1,11 +1,8 @@
 # 🌌 Nebula
 
-> Gestor visual **local** de proyectos y repositorios que convierte la actividad de desarrollo en una constelación interactiva.
+> Gestor visual **local** de proyectos y repositorios que convierte tu actividad de desarrollo en un mapa espacial pixel-art interactivo.
 
-Nebula detecta automáticamente los repositorios Git de tu máquina y representa cada proyecto como un orbe procedural generado a partir de su ADN: lenguajes, tamaño, complejidad y actividad reciente.
-
-<!--
-Añade aquí una captura o GIF cuando lo tengas disponible.
+Nebula detecta automáticamente los repositorios Git de tu máquina y representa cada proyecto como un planeta pixel-art procedural generado a partir de su ADN: lenguajes, tamaño, complejidad y actividad reciente. Cada carpeta raíz que configures es una zona del mapa con su propia nebulosa.
 
 <p align="center">
   <img
@@ -14,7 +11,6 @@ Añade aquí una captura o GIF cuando lo tengas disponible.
     width="900"
   />
 </p>
--->
 
 ## Índice
 
@@ -36,11 +32,12 @@ Añade aquí una captura o GIF cuando lo tengas disponible.
 ## Características
 
 - **Detección automática de repositorios**: selecciona carpetas desde la interfaz mediante el navegador integrado y Nebula localiza los repositorios Git. Los watchers detectan repositorios nuevos o eliminados sin reiniciar.
-- **Arte generativo por proyecto**: cada repositorio tiene una visual única y determinista creada con shaders GLSL y Three.js.
+- **Arte pixel generativo por proyecto**: cada repositorio tiene un planeta único y determinista (rocoso, gaseoso, anillado, cristalino o estación) renderizado en un motor Canvas 2D propio, sin un solo asset dibujado a mano.
+- **Mapa por zonas**: cada carpeta raíz es una región etiquetada del mapa, con pan, zoom con snap a píxel y encuadre por zona.
 - **ADN visual del repositorio**: los colores representan la mezcla de lenguajes; el tamaño refleja la complejidad; y el pulso muestra la actividad reciente.
 - **Git en tiempo real**: muestra rama actual, estado del working tree, ahead/behind, ramas, últimos commits y actividad reciente, actualizado mediante WebSocket.
 - **Agentes de IA**: unifica las sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto.
-- **Detección de sesiones activas**: el orbe de un proyecto late mientras un agente está trabajando.
+- **Detección de sesiones activas**: el planeta de un proyecto late y suelta partículas mientras un agente está trabajando.
 - **Vista Hoy**: reúne tareas, avisos Git y agentes activos de todos los proyectos.
 - **Creación rápida de tareas**: permite añadir tareas desde la vista Hoy utilizando `@proyecto`.
 - **Kanban por proyecto**: organiza tareas manuales, sugeridas por agentes y sincronizadas desde servicios externos.
@@ -252,8 +249,7 @@ Nebula busca notas relacionadas con cada proyecto en los vaults detectados y las
 - TypeScript
 - Vite
 - Tailwind CSS
-- Three.js
-- React Three Fiber
+- Motor pixel-art propio sobre Canvas 2D (sprites y ruido procedurales)
 - Zustand
 - Framer Motion
 
@@ -280,7 +276,7 @@ Nebula busca notas relacionadas con cada proyecto en los vaults detectados y las
 ├── scripts/    # arranque rápido y autostart de Windows
 ├── server/     # daemon, API, WebSocket, SQLite e integraciones
 ├── shared/     # tipos TypeScript compartidos
-└── web/        # interfaz React y visualización 3D
+└── web/        # interfaz React y motor pixel-art 2D
 ```
 
 El servidor actúa como fuente de verdad:

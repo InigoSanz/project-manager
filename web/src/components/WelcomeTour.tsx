@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const TOUR_KEY = "nebula:tour-v1";
+const TOUR_KEY = "nebula:tour-v2";
 
 const STEPS = [
   {
     icon: "🪐",
-    title: "Cada orbe es uno de tus repos",
-    body: "Su color viene de tus lenguajes, su tamaño de la complejidad, y late cuando un agente de IA está trabajando dentro. Haz click en uno para entrar.",
+    title: "Un mapa espacial, un planeta por repo",
+    body: "Cada carpeta raíz que configures es una zona del mapa, y cada planeta uno de tus repositorios: su superficie viene de tus lenguajes y suelta partículas cuando un agente de IA trabaja dentro. Click para entrar, doble click para encuadrar una zona.",
   },
   {
     icon: "◔",
@@ -60,7 +60,7 @@ export function WelcomeTour() {
             key={step}
             initial={{ scale: 0.95, y: 10 }}
             animate={{ scale: 1, y: 0 }}
-            className="glass w-full max-w-md rounded-2xl p-7 text-center"
+            className="glass-raised w-full max-w-md rounded-2xl p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-4xl">{STEPS[step].icon}</p>
@@ -81,7 +81,7 @@ export function WelcomeTour() {
                 onClick={() => (step < STEPS.length - 1 ? setStep(step + 1) : dismiss())}
                 className="rounded-lg bg-indigo-500/30 px-5 py-2 text-sm text-white hover:bg-indigo-500/45"
               >
-                {step < STEPS.length - 1 ? "Siguiente" : "¡A la galaxia!"}
+                {step < STEPS.length - 1 ? "Siguiente" : "¡Al mapa!"}
               </button>
             </div>
           </motion.div>

@@ -62,7 +62,7 @@ export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () 
       <button
         onClick={() => setOpen((o) => !o)}
         title="Fecha y prioridad"
-        className="hidden rounded p-1 text-xs text-slate-500 group-hover:inline-block hover:text-white pointer-coarse:inline-block"
+        className="rounded p-1 text-xs text-slate-500 opacity-45 transition-opacity group-hover:opacity-100 hover:text-white pointer-coarse:opacity-100"
       >
         📅
       </button>
@@ -72,7 +72,7 @@ export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () 
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
-            className="glass absolute bottom-full left-0 z-30 mb-1 w-56 rounded-xl p-3 shadow-xl"
+            className="glass-raised absolute bottom-full left-0 z-30 mb-1 w-56 rounded-xl p-3 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <label className="block text-[10px] tracking-wider text-slate-400 uppercase">Vence</label>
@@ -82,6 +82,30 @@ export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () 
               onChange={(e) => setDue(e.target.value)}
               className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-slate-200 focus:outline-none [color-scheme:dark]"
             />
+            {/* posponer con un click */}
+            <div className="mt-1 flex gap-1">
+              {(
+                [
+                  ["hoy", 0],
+                  ["mañana", 1],
+                  ["+1 sem", 7],
+                ] as const
+              ).map(([label, days]) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + days);
+                    setDue(
+                      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+                    );
+                  }}
+                  className="flex-1 rounded-md bg-white/5 px-1 py-1 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="mt-2.5 block text-[10px] tracking-wider text-slate-400 uppercase">Prioridad</label>
             <div className="mt-1 flex gap-1">
               {(["—", "baja", "media", "alta"] as const).map((label, i) => (

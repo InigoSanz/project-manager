@@ -62,7 +62,7 @@ export function FolderPicker({
             initial={{ scale: 0.96, y: 8 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: 8 }}
-            className="glass flex h-[70vh] max-h-[85dvh] w-full max-w-xl flex-col rounded-2xl p-4"
+            className="glass-raised flex h-[70vh] max-h-[85dvh] w-full max-w-xl flex-col rounded-2xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-sm font-semibold text-white">Elige la carpeta donde viven tus proyectos</h2>

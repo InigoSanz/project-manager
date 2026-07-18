@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TodayData, TodayTask } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
-import { useToasts } from "./Toast";
-import { describeParse, parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
 import { TaskMetaBadges } from "./TaskMeta";
+import { QuickAddInput } from "./QuickAddInput";
+import { TaskEditor } from "./TaskEditor";
 
 const SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
   jira: { label: "◆ Jira", cls: "bg-sky-500/15 text-sky-300" },
@@ -15,7 +15,7 @@ const SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
 
 const AGENT_ICON: Record<string, string> = { claude: "✳", codex: "⌁", cursor: "▮", gemini: "✦", antigravity: "◒" };
 
-function TaskRow({ task, onChanged }: { task: TodayTask; onChanged: () => void }) {
+function TaskRow({ task, onChanged, onEdit }: { task: TodayTask; onChanged: () => void; onEdit: () => void }) {
   const [done, setDone] = useState(false);
   const badge = SOURCE_BADGE[task.source];
 
@@ -43,9 +43,15 @@ function TaskRow({ task, onChanged }: { task: TodayTask; onChanged: () => void }
         ✓
       </button>
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-sm ${done ? "text-slate-500 line-through" : "text-slate-200"}`} title={task.title}>
+        <button
+          onClick={onEdit}
+          title="Editar tarea"
+          className={`block w-full truncate text-left text-sm hover:text-white ${
+            done ? "text-slate-500 line-through" : "text-slate-200"
+          }`}
+        >
           {task.title}
-        </p>
+        </button>
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10px]">
           {task.projectName && (
             <Link to={`/project/${task.projectId}`} className="text-slate-500 hover:text-indigo-300">
@@ -121,10 +127,8 @@ function Section({ title, count, children, hint }: { title: string; count?: numb
 
 export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [data, setData] = useState<TodayData | null>(null);
-  const projects = useNebula((s) => s.projects);
+  const [editing, setEditing] = useState<TodayTask | null>(null);
   const tasksVersion = useNebula((s) => s.tasksVersion);
-  const push = useToasts((s) => s.push);
-  const [text, setText] = useState("");
 
   const refresh = async (): Promise<void> => {
     try {
@@ -138,17 +142,6 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
     if (open) void refresh();
   }, [open, tasksVersion]);
 
-  const parse = useMemo(() => parseQuickAdd(text, projects), [text, projects]);
-
-  const add = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!parse.title) return;
-    setText("");
-    const dest = await submitQuickAdd(parse);
-    push({ level: "success", message: `Tarea creada en ${dest}` });
-    void refresh();
-  };
-
   return (
     <AnimatePresence>
       {open && (
@@ -157,7 +150,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.aside
@@ -184,24 +177,9 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             {/* Añadir rápido */}
-            <form onSubmit={(e) => void add(e)} className="mt-3 shrink-0">
-              <input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Añade una tarea…  (usa @proyecto)"
-                className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-400/60 focus:outline-none max-sm:text-base"
-              />
-              {text.trim() && (
-                <p className="mt-1 text-[11px] text-slate-500">
-                  {parse.unknownMention
-                    ? `@${parse.unknownMention} no casa con ningún proyecto — irá a tu bandeja personal`
-                    : `→ ${describeParse(parse)} · Enter para crear`}
-                </p>
-              )}
-              {!text.trim() && (
-                <p className="mt-1 text-[10px] text-slate-600">@proyecto · !alta/!media/!baja · ^hoy ^mañana ^vie ^25/07</p>
-              )}
-            </form>
+            <div className="mt-3">
+              <QuickAddInput onCreated={() => void refresh()} />
+            </div>
 
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
               {!data ? (
@@ -212,7 +190,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                     <ul>
                       <AnimatePresence>
                         {data.doing.map((t) => (
-                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} />
+                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setEditing(t)} />
                         ))}
                       </AnimatePresence>
                     </ul>
@@ -224,7 +202,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                         {data.attention.map((a) => (
                           <li key={a.projectId} className="py-1">
                             <Link to={`/project/${a.projectId}`} onClick={onClose} className="group flex items-baseline gap-2 text-sm">
-                              <span className="text-amber-300/90">▲</span>
+                              <span className="text-amber-300/90">⚑</span>
                               <span className="text-slate-200 group-hover:text-white">{a.name}</span>
                               <span className="truncate text-[11px] text-slate-500">{a.reasons.join(" · ")}</span>
                             </Link>
@@ -295,7 +273,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                     <ul>
                       <AnimatePresence>
                         {data.todo.map((t) => (
-                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} />
+                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setEditing(t)} />
                         ))}
                       </AnimatePresence>
                     </ul>
@@ -315,6 +293,8 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
               )}
             </div>
           </motion.aside>
+
+          <TaskEditor task={editing} onClose={() => setEditing(null)} onSaved={() => void refresh()} />
         </>
       )}
     </AnimatePresence>

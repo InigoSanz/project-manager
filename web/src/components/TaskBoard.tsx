@@ -1,8 +1,20 @@
-import { useEffect, useState, type DragEvent, type FormEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Project, TaskItem, TaskStatus } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { TaskMetaBadges, TaskMetaEditor } from "./TaskMeta";
+import { QuickAddInput } from "./QuickAddInput";
+import { TaskEditor } from "./TaskEditor";
+
+/** Orden de columna: vencidas primero, luego fecha asc, prioridad desc, resto. */
+function sortColumn(tasks: TaskItem[]): TaskItem[] {
+  return [...tasks].sort((a, b) => {
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+    if (Boolean(a.dueDate) !== Boolean(b.dueDate)) return a.dueDate ? -1 : 1;
+    if (a.priority !== b.priority) return b.priority - a.priority;
+    return a.createdAt < b.createdAt ? -1 : 1;
+  });
+}
 
 const COLUMNS: Array<{ id: TaskStatus; label: string; accent: string }> = [
   { id: "todo", label: "Pendiente", accent: "border-t-sky-400/60" },
@@ -66,11 +78,13 @@ function TaskCard({
   onDelete,
   onMove,
   onMetaSaved,
+  onEdit,
 }: {
   task: TaskItem;
   onDelete: () => void;
   onMove: (status: TaskStatus) => void;
   onMetaSaved: () => void;
+  onEdit: () => void;
 }) {
   const idx = FLOW.indexOf(task.status);
   return (
@@ -83,7 +97,7 @@ function TaskCard({
       onDragStartCapture={(e: DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData("text/task-id", task.id);
       }}
-      className="glass group cursor-grab rounded-lg p-3 active:cursor-grabbing"
+      className="glass group cursor-grab rounded-xl p-3 active:cursor-grabbing"
     >
       <div className="flex items-start gap-2">
         {task.status !== "done" && (
@@ -95,12 +109,18 @@ function TaskCard({
             ✓
           </button>
         )}
-        <p className={`min-w-0 flex-1 text-sm ${task.status === "done" ? "text-slate-500 line-through" : "text-slate-100"}`}>
+        <button
+          onClick={onEdit}
+          title="Editar tarea"
+          className={`min-w-0 flex-1 text-left text-sm hover:text-white ${
+            task.status === "done" ? "text-slate-500 line-through" : "text-slate-100"
+          }`}
+        >
           {task.title}
-        </p>
+        </button>
         <button
           onClick={onDelete}
-          className="hidden shrink-0 p-1 text-slate-500 group-hover:block hover:text-rose-400 pointer-coarse:block"
+          className="shrink-0 p-1 text-slate-500 opacity-45 transition-opacity group-hover:opacity-100 hover:text-rose-400 pointer-coarse:opacity-100"
           title="Eliminar"
         >
           ✕
@@ -121,7 +141,7 @@ function TaskCard({
           )}
         </div>
         {idx >= 0 && (
-          <div className="hidden shrink-0 gap-1 group-hover:flex pointer-coarse:flex">
+          <div className="flex shrink-0 gap-1 opacity-45 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100">
             {idx > 0 && (
               <button onClick={() => onMove(FLOW[idx - 1])} title="Mover atrás" className="rounded bg-white/5 px-1.5 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white pointer-coarse:px-2.5">
                 ‹
@@ -209,8 +229,8 @@ function JiraKeyControl({ project }: { project: Project }) {
 
 export function TaskBoard({ project }: { project: Project }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [newTitle, setNewTitle] = useState("");
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
+  const [editing, setEditing] = useState<TaskItem | null>(null);
   const version = useNebula((s) => s.tasksVersion[project.id] ?? 0);
 
   const refetch = (): void => {
@@ -245,18 +265,6 @@ export function TaskBoard({ project }: { project: Project }) {
   const remove = async (taskId: string): Promise<void> => {
     setTasks((ts) => ts.filter((t) => t.id !== taskId));
     await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
-  };
-
-  const createTask = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    const title = newTitle.trim();
-    if (!title) return;
-    setNewTitle("");
-    await fetch(`/api/projects/${project.id}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
   };
 
   return (
@@ -301,26 +309,13 @@ export function TaskBoard({ project }: { project: Project }) {
       {/* Asociación con Jira (solo si Jira está configurado) */}
       <JiraKeyControl project={project} />
 
-      {/* Alta rápida */}
-      <form onSubmit={(e) => void createTask(e)} className="flex shrink-0 gap-2">
-        <input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Nueva tarea…"
-          className="glass flex-1 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-400/60 focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-indigo-500/25 px-4 text-sm text-white transition-colors hover:bg-indigo-500/40"
-        >
-          Añadir
-        </button>
-      </form>
+      {/* Alta rápida con tokens (misma sintaxis que Hoy y la paleta) */}
+      <QuickAddInput fixedProject={project} onCreated={refetch} withButton placeholder="Nueva tarea…  (!alta ^vie)" />
 
       {/* Kanban: 3 columnas en ≥sm; scroll horizontal con snap en móvil */}
       <div className="min-h-0 flex-1 gap-3 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto sm:grid sm:grid-cols-3">
         {COLUMNS.map((col) => {
-          const items = tasks.filter((t) => t.status === col.id);
+          const items = sortColumn(tasks.filter((t) => t.status === col.id));
           return (
             <div
               key={col.id}
@@ -352,6 +347,7 @@ export function TaskBoard({ project }: { project: Project }) {
                       onDelete={() => void remove(t.id)}
                       onMove={(s) => void move(t.id, s)}
                       onMetaSaved={refetch}
+                      onEdit={() => setEditing(t)}
                     />
                   ))}
                 </AnimatePresence>
@@ -363,6 +359,8 @@ export function TaskBoard({ project }: { project: Project }) {
           );
         })}
       </div>
+
+      <TaskEditor task={editing} onClose={() => setEditing(null)} onSaved={refetch} />
     </div>
   );
 }

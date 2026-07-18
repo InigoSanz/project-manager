@@ -29,7 +29,7 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
             initial={{ scale: 0.96 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.96 }}
-            className="glass max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl p-6"
+            className="glass-raised max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -57,6 +57,14 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
               en Ctrl+K.
             </p>
 
+            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">El mapa</h3>
+            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400">
+              <span>🪐 planeta = repositorio</span>
+              <span>zona = carpeta raíz</span>
+              <span>Espacio profundo = sin raíz</span>
+              <span>rueda/pinch = zoom · arrastrar = mover</span>
+            </div>
+
             <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Leyenda</h3>
             <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400">
               <span>◆ issue de Jira</span>
@@ -66,11 +74,11 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
               <span>✦ Gemini · ◒ Antigravity</span>
               <span>⏱ vencimiento · ▲ prioridad</span>
               <span>● en vivo (agente activo)</span>
-              <span>▲ atención git</span>
+              <span>⚑ atención git</span>
             </div>
 
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-              Al completar una tarjeta de Jira/Planner, Nebula la cierra también allí (configurable en{" "}
+              Al completar una tarea de Jira/Planner, Nebula la cierra también allí (configurable en{" "}
               <Link to="/ajustes" onClick={onClose} className="text-indigo-300 hover:underline">
                 Ajustes → Sincronización
               </Link>

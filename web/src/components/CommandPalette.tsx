@@ -83,7 +83,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
           run: close(() => navigate(`/project/${p.id}`)),
         })),
       { id: "today", label: "Abrir Hoy", hint: "tecla T", run: close(() => window.dispatchEvent(new Event("nebula:open-today"))) },
-      { id: "home", label: "Ir a la galaxia", hint: "inicio", run: close(() => navigate("/")) },
+      { id: "home", label: "Ir al mapa", hint: "inicio", run: close(() => navigate("/")) },
       { id: "rescan", label: "Re-escanear proyectos", hint: "acción", run: close(() => void rescan()) },
       { id: "settings", label: "Ajustes", hint: "configuración", run: close(onOpenSettings) },
     ];
@@ -99,7 +99,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
       base.push({
         id: `task:${t.id}`,
         label: `${STATUS_ICON[t.status] ?? "○"} ${t.title}`,
-        hint: t.projectName ?? "bandeja",
+        hint: t.projectName ?? "sin proyecto",
         run: () => {
           setOpen(false);
           if (t.projectName) {
@@ -117,7 +117,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
         base.push({
           id: "quick-add",
           label: `➕ Crear tarea: «${parse.title}»`,
-          hint: `en ${parse.project?.name ?? "bandeja personal"}`,
+          hint: `en ${parse.project?.name ?? "Sin proyecto"}`,
           run: () => {
             void submitQuickAdd(parse).then((dest) =>
               pushToast({ level: "success", message: `Tarea creada en ${dest}` }),
@@ -139,14 +139,14 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[18vh] backdrop-blur-sm max-sm:pt-[8dvh]"
+          className="fixed inset-0 z-[55] flex items-start justify-center bg-black/50 p-4 pt-[18vh] backdrop-blur-sm max-sm:pt-[8dvh]"
           onClick={() => setOpen(false)}
         >
           <motion.div
             initial={{ scale: 0.96, y: -8 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: -8 }}
-            className="glass w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
+            className="glass-raised w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <input

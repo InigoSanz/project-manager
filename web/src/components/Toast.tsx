@@ -44,7 +44,7 @@ export function ToastStack() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 40 }}
-            className={`glass pointer-events-auto rounded-xl border-l-2 p-3 text-sm shadow-xl ${STYLE[t.level]}`}
+            className={`glass-raised pointer-events-auto rounded-xl border-l-2 p-3 text-sm shadow-xl ${STYLE[t.level]}`}
           >
             <div className="flex items-start justify-between gap-2">
               <p className="whitespace-pre-line">{t.message}</p>

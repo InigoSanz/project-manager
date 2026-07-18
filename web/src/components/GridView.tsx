@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { Project } from "@nebula/shared";
+import { PixelPlanet } from "./PixelPlanet";
 
 function LanguageBar({ project }: { project: Project }) {
   const langs = project.analysis?.languages ?? [];
@@ -30,11 +31,14 @@ export function GridView({ projects }: { projects: Project[] }) {
               className="glass block rounded-2xl p-5 transition-all hover:border-white/25 hover:shadow-[0_0_30px_-8px_var(--color-glow)]"
             >
               <div className="flex items-center justify-between gap-2">
-                <h3 className="truncate font-semibold text-white">{p.name}</h3>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <PixelPlanet project={p} size={34} animate={false} className="shrink-0" />
+                  <h3 className="truncate font-semibold text-white">{p.name}</h3>
+                </div>
                 <div className="flex shrink-0 gap-1.5">
                   {p.git && (p.git.behind > 0 || p.git.conflicted > 0) && (
                     <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-300" title={p.git.conflicted > 0 ? "conflictos" : `${p.git.behind} commits por detrás`}>
-                      ▲ atención
+                      ⚑ atención
                     </span>
                   )}
                   {p.git && (
@@ -48,7 +52,7 @@ export function GridView({ projects }: { projects: Project[] }) {
                   )}
                 </div>
               </div>
-              <p className="mt-1 truncate text-xs text-slate-400">{p.path}</p>
+              <p className="mt-1 truncate pl-[46px] text-xs text-slate-400 max-sm:pl-0">{p.path}</p>
               <div className="mt-4">
                 <LanguageBar project={p} />
               </div>

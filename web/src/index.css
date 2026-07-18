@@ -3,10 +3,23 @@
 @theme {
   --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --color-void: #05060f;
-  --color-panel: #0c0e1dcc;
-  --color-line: #ffffff14;
-  --color-glow: #7c8cff;
+  /* fondo y superficies */
+  --color-void: #04050d;
+  --color-panel: #0b0d1ccc;
+  --color-panel-raised: #12152acc;
+  --color-line: #ffffff12;
+  --color-line-strong: #ffffff2a;
+  /* acento unificado (violeta-azulado del mapa) */
+  --color-glow: #8b93ff;
+  --color-accent: #8b93ff;
+  --color-accent-soft: #8b93ff2e;
+  /* estados */
+  --color-ok: #4ade9c;
+  --color-warn: #f5b14d;
+  --color-danger: #f4657f;
+  /* texto */
+  --color-ink: #e8eaf6;
+  --color-ink-dim: #8e94b8;
 }
 
 html,
@@ -15,7 +28,7 @@ body,
   height: 100%;
   margin: 0;
   background: var(--color-void);
-  color: #e6e8f2;
+  color: var(--color-ink);
   font-family: var(--font-sans);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -31,7 +44,7 @@ body,
 }
 
 ::selection {
-  background: #7c8cff55;
+  background: #8b93ff55;
 }
 
 /* Scrollbars discretos para los paneles */
@@ -45,3 +58,22 @@ body,
   backdrop-filter: blur(14px);
   border: 1px solid var(--color-line);
 }
+
+/* Superficie elevada (popovers, modales sobre paneles) */
+.glass-raised {
+  background: var(--color-panel-raised);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-line-strong);
+}
+
+/* Reescalado nítido del lienzo pixel-art */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/*
+ * Escala de z-index de la app (mantener sin colisiones):
+ *  10 cabecera de Home · 20 barra inferior móvil · 30 popover TaskMeta
+ *  40 backdrop Hoy · 50 panel Hoy · 55 paleta Ctrl+K · 58 editor de tarea · 60 FolderPicker
+ *  65 QrModal · 70 Ayuda · 75 Tour · 80 toasts
+ */

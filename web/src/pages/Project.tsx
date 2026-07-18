@@ -1,12 +1,9 @@
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Canvas } from "@react-three/fiber";
-import { Float, Stars } from "@react-three/drei";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { deriveDNA } from "../visuals/dna";
-import { ProjectOrb } from "../visuals/ProjectOrb";
+import { PixelPlanet } from "../components/PixelPlanet";
 import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
 import { AgentTimeline } from "../components/AgentTimeline";
@@ -31,7 +28,6 @@ export function ProjectPage() {
   const [tab, setTab] = useState<Tab>(TABS.some((t) => t.id === initialTab) ? (initialTab as Tab) : "git");
   const touch = useIsTouch();
   const small = useIsSmallScreen();
-  const quality = touch || small ? ("lite" as const) : ("high" as const);
   const project = projects.find((p) => p.id === id);
   const dna = useMemo(() => (project ? deriveDNA(project) : null), [project]);
 
@@ -41,7 +37,7 @@ export function ProjectPage() {
         <div className="text-center">
           <p>Proyecto no encontrado.</p>
           <Link to="/" className="mt-2 inline-block text-indigo-300 hover:text-white">
-            ← Volver a la galaxia
+            ← Volver al mapa
           </Link>
         </div>
       </div>
@@ -54,21 +50,20 @@ export function ProjectPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Hero con el orbe */}
-      <div className="relative h-[42%] shrink-0 max-sm:h-[30%]">
-        <Canvas camera={{ position: [0, 0.6, 4.2], fov: 45 }} dpr={quality === "lite" ? [1, 1.5] : [1, 2]}>
-          <color attach="background" args={["#05060f"]} />
-          <ambientLight intensity={0.4} />
-          <Suspense fallback={null}>
-            <Stars radius={60} depth={30} count={quality === "lite" ? 800 : 1800} factor={3} fade speed={0.5} />
-            <Float speed={1.4} rotationIntensity={0.25} floatIntensity={0.5}>
-              <ProjectOrb dna={dna} scale={1.15} livePulse={live ? 1 : 0} quality={quality} />
-            </Float>
-            <EffectComposer>
-              <Bloom intensity={1.0} luminanceThreshold={0.25} luminanceSmoothing={0.8} mipmapBlur />
-            </EffectComposer>
-          </Suspense>
-        </Canvas>
+      {/* Hero con el planeta pixel-art */}
+      <div className="relative h-[36%] shrink-0 overflow-hidden max-sm:h-[28%]">
+        {/* resplandor de fondo con el color dominante del proyecto */}
+        <div
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(ellipse 60% 70% at 50% 58%, ${dna.colors[0]}2e, transparent 70%)` }}
+        />
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ y: [0, -7, 0] }}
+          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+        >
+          <PixelPlanet project={project} size={touch || small ? 170 : 250} live={live} animate />
+        </motion.div>
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5">
           <div className="pointer-events-auto flex gap-2">
@@ -76,7 +71,7 @@ export function ProjectPage() {
               to="/"
               className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
             >
-              ← Galaxia
+              ← Mapa
             </Link>
             <button
               onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
@@ -144,7 +139,7 @@ export function ProjectPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`shrink-0 rounded-lg px-4 py-1.5 text-sm transition-colors max-sm:snap-start ${
-                tab === t.id ? "bg-indigo-500/25 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                tab === t.id ? "bg-accent/25 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
               }`}
             >
               {t.label}

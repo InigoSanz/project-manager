@@ -124,3 +124,8 @@ export const useNebula = create<NebulaState>((set, get) => ({
     set({ config });
   },
 }));
+
+// Gancho de desarrollo para inspección y simulación (Playwright/DevTools)
+if (import.meta.env.DEV) {
+  (window as unknown as { __nebula?: typeof useNebula }).__nebula = useNebula;
+}

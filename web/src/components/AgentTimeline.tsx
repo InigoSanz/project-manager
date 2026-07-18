@@ -68,7 +68,7 @@ export function AgentTimeline({ project }: { project: Project }) {
                   live ? "animate-pulse bg-emerald-400" : "bg-slate-600"
                 }`}
               />
-              <div className="glass rounded-xl p-3.5">
+              <div className="glass rounded-xl p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${meta.chip}`}>
                     {meta.icon} {meta.label}
