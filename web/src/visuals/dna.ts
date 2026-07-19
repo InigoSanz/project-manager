@@ -1,6 +1,6 @@
 import type { Project, ProjectTraits } from "@nebula/shared";
 
-/** Estilo de superficie de un globo (elegido por seed, sesgado por el shape). */
+/** Estilo de superficie del planeta (lo sesga la tecnología, lo concreta el seed). */
 export type SurfaceStyle =
   | "continents"
   | "archipelago"
@@ -8,7 +8,8 @@ export type SurfaceStyle =
   | "mottled"
   | "cratered"
   | "lava"
-  | "ice";
+  | "ice"
+  | "crystalline";
 
 export interface RingSpec {
   bands: 1 | 2;
@@ -47,8 +48,6 @@ export interface VisualDNA {
   shape: ProjectTraits["shape"];
   /** desfase inicial para que cada planeta respire distinto */
   phase: number;
-  /** familia de render: globo o asteroide (el shape es solo un sesgo) */
-  family: "globe" | "asteroid";
   surface: SurfaceStyle;
   rings: RingSpec | null;
   moons: MoonSpec[];
@@ -74,14 +73,56 @@ export function rng(seed: number): () => number {
 
 const FALLBACK = "#6366f1";
 
-/** Tabla de pesos de superficie según el shape original (sesgo, no identidad). */
-const SURFACE_WEIGHTS: Record<ProjectTraits["shape"], Array<[SurfaceStyle, number]>> = {
+type SurfaceTable = Array<[SurfaceStyle, number]>;
+
+/**
+ * La tecnología dominante marca el "bioma" del planeta, pero cada tabla deja
+ * varias superficies posibles: así se intuye el stack de un vistazo y dos repos
+ * de la misma tecnología siguen distinguiéndose (los decide el seed).
+ * Se recorre en orden: gana el primer framework del proyecto que aparezca aquí.
+ */
+const TECH_SURFACES: Array<[string, SurfaceTable]> = [
+  ["angular", [["crystalline", 70], ["mottled", 30]]],
+  ["dotnet", [["crystalline", 70], ["cratered", 30]]],
+  ["rust-crate", [["crystalline", 60], ["lava", 40]]],
+  ["maven", [["cratered", 55], ["continents", 25], ["mottled", 20]]],
+  ["gradle", [["cratered", 55], ["mottled", 25], ["continents", 20]]],
+  ["django", [["lava", 55], ["banded", 45]]],
+  ["python", [["lava", 50], ["banded", 30], ["mottled", 20]]],
+  ["go-module", [["banded", 60], ["cratered", 40]]],
+  ["docker", [["banded", 50], ["mottled", 30], ["cratered", 20]]],
+  ["nextjs", [["continents", 60], ["archipelago", 40]]],
+  ["react-native", [["archipelago", 60], ["continents", 40]]],
+  ["react", [["continents", 55], ["archipelago", 30], ["ice", 15]]],
+  ["vue", [["archipelago", 55], ["continents", 45]]],
+  ["nuxt", [["archipelago", 60], ["ice", 40]]],
+  ["svelte", [["archipelago", 50], ["ice", 50]]],
+  ["astro", [["ice", 60], ["archipelago", 40]]],
+  ["nestjs", [["mottled", 60], ["cratered", 40]]],
+  ["express", [["mottled", 55], ["continents", 45]]],
+  ["fastify", [["mottled", 55], ["archipelago", 45]]],
+  ["hono", [["mottled", 60], ["archipelago", 40]]],
+  ["electron", [["ice", 60], ["mottled", 40]]],
+  ["tauri", [["ice", 55], ["crystalline", 45]]],
+  ["threejs", [["crystalline", 50], ["ice", 50]]],
+  ["serverless", [["banded", 60], ["mottled", 40]]],
+];
+
+/** Sin tecnología reconocida: el shape del analizador sigue haciendo de sesgo. */
+const SHAPE_SURFACES: Record<ProjectTraits["shape"], SurfaceTable> = {
   sphere: [["continents", 30], ["archipelago", 20], ["ice", 15], ["mottled", 15], ["cratered", 10], ["lava", 10]],
   cloud: [["banded", 55], ["mottled", 20], ["ice", 15], ["lava", 10]],
   rings: [["continents", 30], ["banded", 25], ["mottled", 25], ["cratered", 20]],
   torus: [["continents", 30], ["archipelago", 20], ["ice", 15], ["mottled", 15], ["cratered", 10], ["lava", 10]],
-  crystal: [["mottled", 1]], // la familia asteroide trae su propia superficie rocosa
+  crystal: [["crystalline", 70], ["mottled", 30]],
 };
+
+function surfaceTableFor(frameworks: string[], shape: ProjectTraits["shape"]): SurfaceTable {
+  for (const [tech, table] of TECH_SURFACES) {
+    if (frameworks.includes(tech)) return table;
+  }
+  return SHAPE_SURFACES[shape];
+}
 
 function pickWeighted<T>(r: () => number, table: Array<[T, number]>): T {
   const total = table.reduce((sum, [, w]) => sum + w, 0);
@@ -97,15 +138,16 @@ function pickWeighted<T>(r: () => number, table: Array<[T, number]>): T {
  * Tiradas de variante: cada feature usa su propio stream (`seed ^ CONST`)
  * para que añadir una tirada a una no descoloque las demás.
  */
-function rollVariants(traits: ProjectTraits, colorCount: number, radius: number): Pick<
-  VisualDNA,
-  "family" | "surface" | "rings" | "moons" | "halo" | "storm" | "variantKey"
-> {
-  const family = traits.shape === "crystal" ? "asteroid" : "globe";
-  const surface = pickWeighted(rng(traits.seed ^ 0x54f4), SURFACE_WEIGHTS[traits.shape]);
+function rollVariants(
+  traits: ProjectTraits,
+  frameworks: string[],
+  colorCount: number,
+  radius: number,
+): Pick<VisualDNA, "surface" | "rings" | "moons" | "halo" | "storm" | "variantKey"> {
+  const surface = pickWeighted(rng(traits.seed ^ 0x54f4), surfaceTableFor(frameworks, traits.shape));
 
   let rings: RingSpec | null = null;
-  if (family === "globe") {
+  {
     const r = rng(traits.seed ^ 0x9219);
     const present = traits.shape === "rings" || r() < 0.18;
     if (present) {
@@ -137,18 +179,17 @@ function rollVariants(traits: ProjectTraits, colorCount: number, radius: number)
   }
 
   const rHs = rng(traits.seed ^ 0x77e1);
-  const halo = family === "globe" && rHs() < 0.3;
+  const halo = rHs() < 0.3;
   const storm = surface === "banded" && rHs() < 0.5;
 
   const variantKey = [
-    family,
     surface,
     rings ? `r${rings.bands}t${rings.tilt.toFixed(2)}s${rings.scale.toFixed(2)}c${rings.colorIdx}` : "r0",
     `${halo ? "h" : ""}${storm ? "s" : ""}`,
     `m${moons.map((m) => m.kind[0] + m.size).join("")}`,
   ].join(":");
 
-  return { family, surface, rings, moons, halo, storm, variantKey };
+  return { surface, rings, moons, halo, storm, variantKey };
 }
 
 export function deriveDNA(project: Project): VisualDNA {
@@ -177,7 +218,9 @@ export function deriveDNA(project: Project): VisualDNA {
   };
 
   const colorCount = Math.max(1, Math.min(4, palette.length));
-  const radius = 0.7 + traits.complexity * 0.9;
+  // rango ancho: la complejidad del repo debe notarse de un vistazo en el mapa
+  const radius = 0.55 + traits.complexity * 1.15;
+  const frameworks = project.analysis?.frameworks ?? [];
   return {
     seed: traits.seed,
     colors,
@@ -190,6 +233,6 @@ export function deriveDNA(project: Project): VisualDNA {
     radius,
     shape: traits.shape,
     phase: r() * Math.PI * 2,
-    ...rollVariants(traits, colorCount, radius),
+    ...rollVariants(traits, frameworks, colorCount, radius),
   };
 }

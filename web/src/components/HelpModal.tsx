@@ -1,5 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { Icon, type IconName } from "./Icon";
+
+function LegendItem({ icon, children }: { icon: IconName; children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Icon name={icon} size={12} className="shrink-0 text-slate-500" />
+      {children}
+    </span>
+  );
+}
 
 function Key({ children }: { children: React.ReactNode }) {
   return <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] text-slate-200">{children}</kbd>;
@@ -34,47 +44,47 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Ayuda</h2>
-              <button onClick={onClose} className="text-slate-500 hover:text-white">
-                ✕
+              <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:text-white" title="Cerrar">
+                <Icon name="close" size={15} />
               </button>
             </div>
 
             <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Atajos</h3>
+            <Row k={<Key>N</Key>} desc="Crear una tarea nueva" />
             <Row k={<Key>T</Key>} desc="Abrir/cerrar el panel Hoy" />
             <Row k={<><Key>Ctrl</Key> <Key>K</Key></>} desc="Buscar proyectos, tareas y acciones" />
             <Row k={<Key>?</Key>} desc="Esta ayuda" />
             <Row k={<Key>Esc</Key>} desc="Cerrar cualquier panel" />
 
-            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Crear tareas al vuelo</h3>
-            <p className="mt-1 rounded-lg bg-black/30 p-2.5 font-mono text-[11px] text-slate-300">
-              preparar demo <span className="text-indigo-300">@portfolio</span>{" "}
-              <span className="text-rose-300">!alta</span> <span className="text-amber-300">^vie</span>
+            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Crear tareas</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+              Pulsa <Key>N</Key> o el botón «Nueva tarea»: eliges proyecto, fecha y prioridad con botones, sin
+              aprenderte nada.
             </p>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-              <span className="text-indigo-300">@proyecto</span> destino ·{" "}
-              <span className="text-rose-300">!alta/!media/!baja</span> prioridad ·{" "}
-              <span className="text-amber-300">^hoy ^mañana ^vie ^25/07</span> vencimiento. Funciona en el panel Hoy y
-              en Ctrl+K.
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+              Si prefieres el teclado, escribe los atajos en el título y se rellenan solos:{" "}
+              <span className="text-indigo-300">@proyecto</span> ·{" "}
+              <span className="text-rose-300">!alta/!media/!baja</span> ·{" "}
+              <span className="text-amber-300">^hoy ^mañana ^vie ^25/07</span>
             </p>
 
             <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">El mapa</h3>
-            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400">
-              <span>🪐 planeta = repositorio</span>
-              <span>zona = carpeta raíz</span>
-              <span>Espacio profundo = sin raíz</span>
-              <span>rueda/pinch = zoom · arrastrar = mover</span>
+            <div className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
+              <p>Cada planeta es un repositorio y cada zona una de tus carpetas raíz.</p>
+              <p>Los repos cuyo root ya no está en la configuración caen en «Espacio profundo».</p>
+              <p>Arrastra para moverte, rueda o pellizca para acercarte; doble click encuadra una zona.</p>
             </div>
 
             <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Leyenda</h3>
-            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400">
-              <span>◆ issue de Jira</span>
-              <span>▦ tarea de Planner</span>
-              <span>✳ derivada de IA / Claude</span>
-              <span>⌁ Codex · ▮ Cursor</span>
-              <span>✦ Gemini · ◒ Antigravity</span>
-              <span>⏱ vencimiento · ▲ prioridad</span>
-              <span>● en vivo (agente activo)</span>
-              <span>⚑ atención git</span>
+            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-slate-400">
+              <LegendItem icon="jira">issue de Jira</LegendItem>
+              <LegendItem icon="planner">tarea de Planner</LegendItem>
+              <LegendItem icon="ai">derivada de una sesión de IA</LegendItem>
+              <LegendItem icon="clock">vencimiento</LegendItem>
+              <LegendItem icon="priority">prioridad</LegendItem>
+              <LegendItem icon="flag">atención en git</LegendItem>
+              <LegendItem icon="dot">agente trabajando ahora</LegendItem>
+              <LegendItem icon="branch">rama actual</LegendItem>
             </div>
 
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
@@ -91,12 +101,18 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
                   onClose();
                   window.dispatchEvent(new Event("nebula:open-tour"));
                 }}
-                className="text-xs text-slate-500 hover:text-white"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-white"
               >
-                ↺ Ver el tour de nuevo
+                <Icon name="refresh" size={12} />
+                Ver el tour de nuevo
               </button>
-              <Link to="/ajustes" onClick={onClose} className="text-xs text-indigo-300 hover:underline">
-                ⚙ Ajustes
+              <Link
+                to="/ajustes"
+                onClick={onClose}
+                className="flex items-center gap-1.5 text-xs text-indigo-300 hover:underline"
+              >
+                <Icon name="settings" size={12} />
+                Ajustes
               </Link>
             </div>
           </motion.div>

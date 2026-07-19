@@ -6,6 +6,7 @@ import { GridView } from "../components/GridView";
 import { FolderPicker } from "../components/FolderPicker";
 import { zoneColor } from "../pixel/palette";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
+import { Icon } from "../components/Icon";
 
 export function Home() {
   const { projects, scanning, connected, rescan, saveConfig, config, loadConfig, todayCount } = useNebula();
@@ -67,61 +68,77 @@ export function Home() {
             ))}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("nebula:focus-zone", { detail: null }))}
-              className="glass rounded-lg px-2.5 py-1 text-[11px] text-slate-400 transition-colors hover:text-white"
+              className="glass flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] text-slate-400 transition-colors hover:text-white"
               title="Encuadrar todo el mapa"
             >
-              ⛶ Todo
+              <Icon name="map" size={12} />
+              Todo
             </button>
           </div>
         )}
         {/* Acciones: arriba en desktop, barra inferior en móvil */}
         {/* en móvil el contenedor ocupa todo el ancho: solo los botones capturan puntero */}
-        <div className="pointer-events-auto flex items-center gap-2 max-sm:pointer-events-none max-sm:fixed max-sm:inset-x-3 max-sm:bottom-0 max-sm:z-20 max-sm:justify-center max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:[&>*]:pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-2 max-sm:pointer-events-none max-sm:fixed max-sm:inset-x-2 max-sm:bottom-0 max-sm:z-20 max-sm:justify-center max-sm:gap-1.5 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:[&>*]:pointer-events-auto">
+          <button
+            onClick={() => window.dispatchEvent(new Event("nebula:new-task"))}
+            className="flex items-center gap-1.5 rounded-lg bg-accent/30 px-3 py-1.5 text-xs text-white transition-colors hover:bg-accent/45 max-sm:px-3.5 max-sm:py-2.5"
+            title="Crear una tarea (tecla N)"
+          >
+            <Icon name="plus" size={15} />
+            <span className="max-sm:hidden">Nueva tarea</span>
+          </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
+            className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white max-sm:px-3.5 max-sm:py-2.5"
             title="Tu día: tareas, avisos y agentes (tecla T)"
           >
-            ◔ Hoy{todayCount > 0 && <span className="ml-1.5 rounded-full bg-accent/40 px-1.5 text-[10px]">{todayCount}</span>}
+            <Icon name="today" size={15} />
+            <span className="max-sm:hidden">Hoy</span>
+            {todayCount > 0 && <span className="rounded-full bg-accent/40 px-1.5 text-[10px]">{todayCount}</span>}
           </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-palette"))}
-            className="glass hidden rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-colors hover:text-white max-sm:block"
+            className="glass hidden rounded-lg px-3.5 py-2.5 text-slate-300 transition-colors hover:text-white max-sm:block"
             title="Buscar proyecto o acción"
           >
-            🔍
+            <Icon name="search" size={15} />
           </button>
           <button
             onClick={() => void rescan()}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:hidden"
+            className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:hidden"
           >
-            ↻ Re-escanear
+            <Icon name="refresh" size={13} />
+            Re-escanear
           </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-help"))}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
+            className="glass rounded-lg px-3 py-2 text-slate-300 transition-colors hover:text-white max-sm:px-3.5 max-sm:py-2.5"
             title="Ayuda (tecla ?)"
           >
-            ?
+            <Icon name="help" size={14} />
           </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-settings"))}
-            className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:px-4 max-sm:py-2.5 max-sm:text-sm"
+            className="glass rounded-lg px-3 py-2 text-slate-300 transition-colors hover:text-white max-sm:px-3.5 max-sm:py-2.5"
             title="Ajustes"
           >
-            ⚙
+            <Icon name="settings" size={14} />
           </button>
           <div className="glass flex rounded-lg p-0.5 text-xs">
-            {(["map", "grid"] as const).map((v) => (
+            {([
+              { id: "map", label: "Mapa", icon: "map" },
+              { id: "grid", label: "Cuadrícula", icon: "grid" },
+            ] as const).map((v) => (
               <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1 transition-colors max-sm:px-3.5 max-sm:py-2 ${
-                  view === v ? "bg-accent/30 text-white" : "text-slate-400 hover:text-white"
+                key={v.id}
+                onClick={() => setView(v.id)}
+                title={v.label}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors max-sm:px-2.5 max-sm:py-2 ${
+                  view === v.id ? "bg-accent/30 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
-                <span className="max-sm:hidden">{v === "map" ? "✦ Mapa" : "▦ Cuadrícula"}</span>
-                <span className="hidden max-sm:inline">{v === "map" ? "✦" : "▦"}</span>
+                <Icon name={v.icon} size={13} />
+                <span className="max-sm:hidden">{v.label}</span>
               </button>
             ))}
           </div>
@@ -137,16 +154,17 @@ export function Home() {
             className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
           >
             <div className="glass pointer-events-auto rounded-2xl p-8 text-center">
-              <p className="text-3xl">🪐</p>
+              <Icon name="map" size={34} className="mx-auto text-accent" />
               <p className="mt-3 text-lg text-white">Sin proyectos todavía</p>
               <p className="mt-2 max-w-sm text-sm text-slate-400">
                 Dile a Nebula dónde viven tus repositorios y los detectará todos automáticamente.
               </p>
               <button
                 onClick={() => setPickerOpen(true)}
-                className="mt-5 rounded-xl bg-accent/30 px-5 py-2.5 text-sm text-white transition-colors hover:bg-accent/45"
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-accent/30 px-5 py-2.5 text-sm text-white transition-colors hover:bg-accent/45"
               >
-                📁 Elegir carpeta de proyectos
+                <Icon name="folder" />
+                Elegir carpeta de proyectos
               </button>
             </div>
           </motion.div>

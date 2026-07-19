@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { deriveDNA } from "../visuals/dna";
 import { PixelPlanet } from "../components/PixelPlanet";
+import { Icon } from "../components/Icon";
 import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
 import { AgentTimeline } from "../components/AgentTimeline";
@@ -69,16 +70,18 @@ export function ProjectPage() {
           <div className="pointer-events-auto flex gap-2">
             <Link
               to="/"
-              className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+              className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
             >
-              ← Mapa
+              <Icon name="arrowLeft" size={13} />
+              Mapa
             </Link>
             <button
               onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
-              className="glass rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
+              className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
               title="Tu día (tecla T)"
             >
-              ◔ Hoy
+              <Icon name="today" size={13} />
+              Hoy
             </button>
           </div>
           {live && (

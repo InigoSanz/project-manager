@@ -21,8 +21,6 @@ export interface SpriteSheet {
  * exactamente un periodo por vuelta, así que no hay costura entre frames.
  */
 const SURF_PERIOD = 10;
-/** Periodo del ruido de silueta del asteroide (bultos por vuelta). */
-const SIL_PERIOD = 8;
 
 /** Fondo de sombra y luz de las rampas (coherente con palette.shade). */
 const SHADOW: [number, number, number] = [8, 9, 22];
@@ -58,12 +56,15 @@ function lightAt(nx: number, ny: number): number {
   return Math.max(0, Math.min(1, l));
 }
 
-/** Nivel de sombreado -2..1 (dithering entre niveles) para una luz l. */
+/**
+ * Nivel de sombreado -2..1. El dithering se concentra en la mitad alta de cada
+ * escalón: transición de luz reconocible sin convertir la esfera en ruido.
+ */
 function shadeLevel(l: number, x: number, y: number): number {
   const t = l * 3.6 - 2;
   const li = Math.floor(t);
   const frac = t - li;
-  const level = dither(x, y, frac) ? li + 1 : li;
+  const level = frac > 0.5 && dither(x, y, (frac - 0.5) * 2) ? li + 1 : li;
   return Math.max(-2, Math.min(1, level));
 }
 
@@ -96,17 +97,31 @@ interface BodyContext {
   noise2: Noise2D;
   /** cráteres precomputados en coordenadas de ruido (u,v,r) */
   craters: Array<{ u: number; v: number; r: number }>;
+  /** vetas de cristal incrustadas en la superficie (mismas coordenadas) */
+  shards: Array<{ u: number; v: number; r: number }>;
   storm: { u: number; v: number } | null;
   freq: number;
 }
 
-/** Valor de superficie 0..1 (+ override de nivel) según el estilo. */
-function surfaceAt(ctx: BodyContext, u: number, v: number, ny: number): { value: number; levelDelta: number; capOverride: boolean; brightOverride: boolean } {
+interface SurfaceSample {
+  value: number;
+  levelDelta: number;
+  /** casquete polar helado */
+  capOverride: boolean;
+  /** veta incandescente: ignora la iluminación y va a tope de brillo */
+  brightOverride: boolean;
+  /** usa la rampa de acento conservando el sombreado (cristales) */
+  accentRamp: boolean;
+}
+
+/** Valor de superficie 0..1 (+ overrides de color/nivel) según el estilo. */
+function surfaceAt(ctx: BodyContext, u: number, v: number, ny: number): SurfaceSample {
   const { dna, noise, noise2 } = ctx;
   let value: number;
   let levelDelta = 0;
   let capOverride = false;
   let brightOverride = false;
+  let accentRamp = false;
 
   switch (dna.surface) {
     case "continents":
@@ -151,8 +166,23 @@ function surfaceAt(ctx: BodyContext, u: number, v: number, ny: number): { value:
       if (edge > 1 || (edge > 0 && dither(Math.round(u * 7), Math.round(v * 7), edge))) capOverride = true;
       break;
     }
+    case "crystalline": {
+      // roca base + vetas de cristal en rombo incrustadas en la superficie:
+      // giran con la longitud, así que el planeta sigue siendo un disco perfecto
+      value = smoothstep(0.4, 0.6, noise(u, v));
+      for (const s of ctx.shards) {
+        const du = Math.abs(wrapDelta(u, s.u, SURF_PERIOD * ctx.freq));
+        const dv = Math.abs(v - s.v);
+        const d = du + dv; // distancia manhattan → facetas angulares
+        if (d < s.r) {
+          accentRamp = true;
+          levelDelta = d < s.r * 0.45 ? 2 : 1;
+        }
+      }
+      break;
+    }
   }
-  return { value, levelDelta, capOverride, brightOverride };
+  return { value, levelDelta, capOverride, brightOverride, accentRamp };
 }
 
 /**
@@ -204,12 +234,17 @@ function renderBody(cell: number, R: number, rotFrac: number, ctx: BodyContext):
         const v = (Math.asin(Math.max(-1, Math.min(1, ny))) / Math.PI) * SURF_PERIOD * ctx.freq;
 
         const surf = surfaceAt(ctx, u, v, ny);
-        const t = Math.max(0, Math.min(0.999, surf.value)) * dna.colorCount;
+        // 3 bandas de color como máximo: con 4 la superficie se vuelve ruido
+        const bands = Math.min(3, dna.colorCount);
+        const t = Math.max(0, Math.min(0.999, surf.value)) * bands;
         let idx = Math.floor(t);
-        if (dither(x, y, t - idx)) idx = Math.min(dna.colorCount - 1, idx + 1);
+        // el dithering solo actúa en el borde entre bandas (transición ~25%),
+        // no en todo su ancho: bandas limpias con costura pixelada
+        const frac = t - idx;
+        if (frac > 0.75 && dither(x, y, (frac - 0.75) / 0.25)) idx = Math.min(bands - 1, idx + 1);
         let ramp = ramps[idx];
         if (surf.capOverride) ramp = CAP_RAMP;
-        if (surf.brightOverride) ramp = ramps[Math.min(1, ramps.length - 1)];
+        if (surf.brightOverride || surf.accentRamp) ramp = ramps[Math.min(1, ramps.length - 1)];
 
         const l = lightAt(nx, ny);
         let level = shadeLevel(l, x, y) + surf.levelDelta;
@@ -227,84 +262,13 @@ function renderBody(cell: number, R: number, rotFrac: number, ctx: BodyContext):
         continue;
       }
 
-      if (showHalo && rr <= haloRR && dither(x, y, 0.55)) {
-        put(img, x, y, ramps[0][3], 120); // aliento atmosférico: aro tenue de 1px
+      // aliento atmosférico: aro continuo de 1px (sin dither, para no dejar
+      // píxeles sueltos que estropeen la circunferencia)
+      if (showHalo && rr <= haloRR) {
+        put(img, x, y, ramps[0][3], 90);
       }
     }
   }
-  return img;
-}
-
-interface AsteroidContext {
-  dna: VisualDNA;
-  ramps: Ramp[];
-  /** ruido 1D periódico de la silueta (bultos de la roca) */
-  silhouette: Noise2D;
-  rock: Noise2D;
-  shards: Array<{ ang: number; rad: number; size: number }>;
-}
-
-/**
- * Asteroide: silueta irregular desplazada por ruido periódico en θ (rueda sin
- * costura), roca sombreada normal y cristales incrustados que destellan.
- * Sustituye al antiguo cristal-molinillo.
- */
-function renderAsteroid(cell: number, R: number, frame: number, frames: number, ctx: AsteroidContext): ImageData {
-  const img = new ImageData(cell, cell);
-  const { dna, ramps } = ctx;
-  const c = cell / 2;
-  const rotFrac = frame / frames;
-  const crystalRamp = ramps[Math.min(1, ramps.length - 1)];
-
-  for (let y = 0; y < cell; y++) {
-    for (let x = 0; x < cell; x++) {
-      const px = x - c + 0.5;
-      const py = y - c + 0.5;
-      const d = Math.hypot(px, py);
-      if (d > R) continue;
-      const ang = Math.atan2(py, px);
-      const su = (ang / (Math.PI * 2) + rotFrac) * SIL_PERIOD;
-      const rTheta = R * (0.74 + 0.26 * ctx.silhouette(su, 0.5));
-      if (d > rTheta) continue;
-
-      // textura polar: rota con la silueta (la roca "voltea" entera)
-      const u = (ang / (Math.PI * 2) + rotFrac) * SURF_PERIOD;
-      const v = (d / R) * 3;
-      const value = ctx.rock(u * 2, v * 2);
-      let ramp = ramps[0];
-      // la roca varía en tono (nivel), no en color: vetas claras y oscuras
-      const tone = value * 2 - 1;
-      let levelDelta = dither(x, y, Math.abs(tone)) ? Math.sign(tone) : 0;
-
-      // cristales incrustados: rombos (distancia manhattan) = facetas de gema
-      for (const s of ctx.shards) {
-        const sa = s.ang + rotFrac * Math.PI * 2;
-        const sx = Math.cos(sa) * s.rad;
-        const sy = Math.sin(sa) * s.rad;
-        const ds = Math.abs(px - sx) + Math.abs(py - sy);
-        if (ds < s.size) {
-          ramp = crystalRamp;
-          levelDelta = ds < s.size * 0.45 ? 2 : 1;
-        }
-      }
-
-      const nx = px / rTheta;
-      const ny = py / rTheta;
-      const l = lightAt(nx, ny);
-      let level = shadeLevel(l, x, y) + levelDelta;
-      if (d > rTheta - 1.25) level = -2; // contorno
-      put(img, x, y, ramp[clampLevel(level) + 2]);
-    }
-  }
-
-  // destellos de 1px sobre los cristales, alternando por frame
-  ctx.shards.forEach((s, i) => {
-    if ((i * 3 + frame) % frames >= 2) return;
-    const sa = s.ang + rotFrac * Math.PI * 2;
-    const sx = Math.round(c + Math.cos(sa) * s.rad);
-    const sy = Math.round(c + Math.sin(sa) * s.rad);
-    put(img, sx, sy, [240, 244, 255]);
-  });
   return img;
 }
 
@@ -361,8 +325,8 @@ const sheetCache = new Map<string, SpriteSheet>();
  * Determinista: mismo ADN → misma tira.
  */
 export function generateSpriteSheet(dna: VisualDNA, frames: number): SpriteSheet {
-  const size = Math.round(22 + dna.radius * 24); // diámetro del cuerpo
-  const key = `v3:${dna.seed}:${dna.variantKey}:${dna.colors.join()}:${size}:${frames}`;
+  const size = Math.round(20 + dna.radius * 28); // diámetro del cuerpo
+  const key = `v4:${dna.seed}:${dna.variantKey}:${dna.colors.join()}:${size}:${frames}`;
   const hit = sheetCache.get(key);
   if (hit) return hit;
 
@@ -380,62 +344,50 @@ export function generateSpriteSheet(dna: VisualDNA, frames: number): SpriteSheet
   temp.height = cell;
   const tctx = temp.getContext("2d")!;
 
-  if (dna.family === "asteroid") {
-    const rShards = rng(dna.seed ^ 0xc21);
-    const k = 2 + Math.floor(rShards() * 3);
-    const shards: AsteroidContext["shards"] = [];
-    for (let i = 0; i < k; i++) {
-      shards.push({
-        ang: rShards() * Math.PI * 2,
-        rad: R * (0.3 + rShards() * 0.45),
-        size: Math.max(2, R * 0.12),
+  const freq = Math.max(1, Math.round(dna.noiseScale * 0.8));
+  const rCraters = rng(dna.seed ^ 0xc4a7);
+  const craters: BodyContext["craters"] = [];
+  if (dna.surface === "cratered") {
+    const n = 5 + Math.floor(rCraters() * 4);
+    for (let i = 0; i < n; i++) {
+      craters.push({
+        u: rCraters() * SURF_PERIOD * freq,
+        v: (rCraters() - 0.5) * SURF_PERIOD * freq * 0.45,
+        r: 0.35 + rCraters() * 0.5,
       });
     }
-    const actx: AsteroidContext = {
-      dna,
-      ramps,
-      silhouette: makeNoise(dna.seed ^ 0xa57e, SIL_PERIOD),
-      rock: fbm(makeNoise(dna.seed, SURF_PERIOD), 3),
-      shards,
-    };
-    for (let f = 0; f < frames; f++) {
-      tctx.clearRect(0, 0, cell, cell);
-      tctx.putImageData(renderAsteroid(cell, R, f, frames, actx), 0, 0);
-      ctx.drawImage(temp, f * cell, 0);
+  }
+  const rShards = rng(dna.seed ^ 0xc21);
+  const shards: BodyContext["shards"] = [];
+  if (dna.surface === "crystalline") {
+    const n = 4 + Math.floor(rShards() * 4);
+    for (let i = 0; i < n; i++) {
+      shards.push({
+        u: rShards() * SURF_PERIOD * freq,
+        v: (rShards() - 0.5) * SURF_PERIOD * freq * 0.5,
+        r: 0.5 + rShards() * 0.7,
+      });
     }
-  } else {
-    const freq = Math.max(1, Math.round(dna.noiseScale * 0.8));
-    const rCraters = rng(dna.seed ^ 0xc4a7);
-    const craters: BodyContext["craters"] = [];
-    if (dna.surface === "cratered") {
-      const n = 5 + Math.floor(rCraters() * 4);
-      for (let i = 0; i < n; i++) {
-        craters.push({
-          u: rCraters() * SURF_PERIOD * freq,
-          v: (rCraters() - 0.5) * SURF_PERIOD * freq * 0.45,
-          r: 0.35 + rCraters() * 0.5,
-        });
-      }
-    }
-    const rStorm = rng(dna.seed ^ 0x5707);
-    const bctx: BodyContext = {
-      dna,
-      ramps,
-      noise: fbm(makeNoise(dna.seed, SURF_PERIOD), 3),
-      noise2: fbm(makeNoise(dna.seed ^ 0x1afa, SURF_PERIOD), 2),
-      craters,
-      storm: dna.storm ? { u: rStorm() * SURF_PERIOD * freq, v: (rStorm() - 0.5) * 1.6 } : null,
-      freq,
-    };
-    for (let f = 0; f < frames; f++) {
-      tctx.clearRect(0, 0, cell, cell);
-      tctx.putImageData(renderBody(cell, R, f / frames, bctx), 0, 0);
-      ctx.drawImage(temp, f * cell, 0);
-    }
+  }
+  const rStorm = rng(dna.seed ^ 0x5707);
+  const bctx: BodyContext = {
+    dna,
+    ramps,
+    noise: fbm(makeNoise(dna.seed, SURF_PERIOD), 3),
+    noise2: fbm(makeNoise(dna.seed ^ 0x1afa, SURF_PERIOD), 2),
+    craters,
+    shards,
+    storm: dna.storm ? { u: rStorm() * SURF_PERIOD * freq, v: (rStorm() - 0.5) * 1.6 } : null,
+    freq,
+  };
+  for (let f = 0; f < frames; f++) {
+    tctx.clearRect(0, 0, cell, cell);
+    tctx.putImageData(renderBody(cell, R, f / frames, bctx), 0, 0);
+    ctx.drawImage(temp, f * cell, 0);
   }
 
   const decor = dna.moons.map((m) => renderMoonSprite(m, dna));
-  const bodyRadius = dna.family === "globe" && dna.rings ? R * 0.72 : R;
+  const bodyRadius = dna.rings ? R * 0.72 : R;
   const sheet: SpriteSheet = { canvas, frameSize: cell, frames, bodyRadius, decor };
   sheetCache.set(key, sheet);
   return sheet;

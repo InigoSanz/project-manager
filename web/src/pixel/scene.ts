@@ -78,6 +78,12 @@ export class SpaceScene {
   nodes: SceneNode[] = [];
   /** proyecto bajo el puntero (lo fija PixelMap; dibuja los brackets) */
   hoverId: string | null = null;
+  /**
+   * Zoom a partir del cual caben los nombres de proyecto sin pisarse. Se
+   * calcula con la separación real entre planetas: cuantos más proyectos tenga
+   * la zona más apretados están, y más hay que acercarse para ver los nombres.
+   */
+  labelZoom = 0.7;
   private nebulae = new Map<string, HTMLCanvasElement>();
   private frames: number;
 
@@ -111,6 +117,7 @@ export class SpaceScene {
     for (const key of [...this.nebulae.keys()]) {
       if (!this.zones.some((z) => z.root === key)) this.nebulae.delete(key);
     }
+    this.labelZoom = computeLabelZoom(this.nodes);
   }
 
   update(dt: number, liveActivity: Record<string, number>, now: number): void {
@@ -253,6 +260,32 @@ export class SpaceScene {
     }
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
+}
+
+/**
+ * Ancho de referencia de un nombre en pantalla (px CSS). Las etiquetas se
+ * truncan por CSS, así que basta con reservar algo menos que su ancho máximo.
+ */
+const LABEL_WIDTH = 66;
+
+/**
+ * Zoom mínimo para mostrar nombres: el vecino más cercano de cada planeta debe
+ * quedar, en pantalla, más lejos que el ancho de una etiqueta.
+ */
+function computeLabelZoom(nodes: SceneNode[]): number {
+  if (nodes.length < 2) return 0.5;
+  let minNearest = Infinity;
+  for (const a of nodes) {
+    let nearest = Infinity;
+    for (const b of nodes) {
+      if (a === b) continue;
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < nearest) nearest = d;
+    }
+    if (nearest < minNearest) minNearest = nearest;
+  }
+  if (!Number.isFinite(minNearest) || minNearest <= 0) return 0.7;
+  return Math.max(0.5, Math.min(3, LABEL_WIDTH / minNearest));
 }
 
 export function zoneBounds(zone: ZonePlacement): Bounds {

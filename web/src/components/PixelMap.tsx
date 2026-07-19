@@ -76,10 +76,11 @@ export function PixelMap({ projects }: { projects: Project[] }) {
         if (!el) continue;
         const s = camera.worldToScreen(node);
         const margin = 60;
-        // muy alejado, los nombres se amontonan: mejor solo etiquetas de zona
-        const visible =
-          camera.zoom >= 0.7 &&
+        // el nombre aparece al acercarse lo bastante para que no se pise con el
+        // del vecino; el planeta apuntado lo muestra siempre
+        const inView =
           s.x > -margin && s.x < camera.viewW + margin && s.y > -margin && s.y < camera.viewH + margin;
+        const visible = inView && (camera.zoom >= scene.labelZoom || scene.hoverId === node.project.id);
         if (!visible) {
           el.style.display = "none";
           continue;
@@ -192,7 +193,10 @@ export function PixelMap({ projects }: { projects: Project[] }) {
             style={{ display: "none" }}
           >
             <div className="flex -translate-x-1/2 flex-col items-center gap-1 text-center">
-              <span className="text-[11px] font-medium tracking-wide text-slate-200 [text-shadow:0_1px_4px_rgba(4,5,13,0.9)]">
+              <span
+                className="max-w-[110px] truncate text-[11px] font-medium tracking-wide text-slate-200 [text-shadow:0_1px_4px_rgba(4,5,13,0.9)]"
+                title={p.name}
+              >
                 {p.name}
               </span>
               {hoverId === p.id && <HoverCard project={p} />}

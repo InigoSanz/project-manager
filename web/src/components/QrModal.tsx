@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Icon } from "./Icon";
 import QRCode from "qrcode";
 
 interface LanInfo {
@@ -52,7 +53,10 @@ export function QrModal({ open, onClose, onEnableLan }: { open: boolean; onClose
             className="glass-raised w-full max-w-sm rounded-2xl p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-white">📱 Abrir en el móvil</h2>
+            <h2 className="flex items-center justify-center gap-2 text-lg font-semibold text-white">
+              <Icon name="device" size={17} />
+              Abrir en el móvil
+            </h2>
             {!info ? (
               <p className="mt-4 text-sm text-slate-500">Cargando…</p>
             ) : !info.enabled ? (

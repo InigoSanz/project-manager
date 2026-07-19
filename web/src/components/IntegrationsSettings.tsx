@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { JiraConfig, JiraStatus, PlannerStatus } from "@nebula/shared";
+import { Icon } from "./Icon";
 
-/** Sección Jira + Microsoft 365 del modal de ajustes. */
+/** Sección Jira + Microsoft 365 de la página de ajustes. */
 export function IntegrationsSettings({
   jira,
   onJiraChange,
@@ -64,7 +65,10 @@ function JiraSection({
 
   return (
     <section onInput={() => (touched.current = true)}>
-      <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">◆ Jira</h3>
+      <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        <Icon name="jira" size={13} />
+        Jira
+      </h3>
       <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
         Trae los issues asignados a ti. Cloud: crea un token en{" "}
         <a
@@ -171,7 +175,10 @@ function PlannerSection() {
 
   return (
     <section>
-      <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">▦ Microsoft 365 · Planner</h3>
+      <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        <Icon name="planner" size={13} />
+        Microsoft 365 · Planner
+      </h3>
       <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
         Trae tus tareas de Planner iniciando sesión con tu cuenta 365 (solo lectura, permiso delegado Tasks.Read).
       </p>

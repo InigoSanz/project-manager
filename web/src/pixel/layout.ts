@@ -1,5 +1,5 @@
 import type { Project } from "@nebula/shared";
-import { rng } from "../visuals/dna";
+import { deriveDNA, rng } from "../visuals/dna";
 import { hashString, zoneHue } from "./palette";
 import { ORPHAN_ZONE, zoneName } from "./roots";
 
@@ -15,12 +15,65 @@ export interface ZonePlacement {
 }
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+/** Aire mínimo entre los bordes de dos planetas vecinos. */
+const PLANET_GAP = 16;
 
 /** Posición determinista dentro de la zona: espiral áurea con densidad uniforme. */
 function planetOffset(index: number, count: number, zoneRadius: number, r: () => number): { x: number; y: number } {
   const angle = index * GOLDEN + r() * 0.35;
   const rad = zoneRadius * (0.2 + 0.72 * Math.sqrt((index + 0.5) / Math.max(1, count)));
   return { x: Math.cos(angle) * rad, y: Math.sin(angle) * rad };
+}
+
+/** Radio visual del sprite, en la misma escala que usa generateSpriteSheet. */
+function planetRadius(project: Project): number {
+  const dna = deriveDNA(project);
+  const size = 20 + dna.radius * 28;
+  return (dna.rings ? size * 0.72 * 1.5 : size) / 2;
+}
+
+/**
+ * Empuja los planetas que se solapan hasta dejar `PLANET_GAP` de aire.
+ * Determinista (sin aleatoriedad) y acotado a unas pocas pasadas: con 15-20
+ * proyectos en una zona la espiral áurea sola deja pares demasiado juntos.
+ */
+function relax(
+  planets: Array<{ x: number; y: number; r: number }>,
+  zoneRadius: number,
+  iterations = 12,
+): void {
+  for (let it = 0; it < iterations; it++) {
+    let moved = false;
+    for (let i = 0; i < planets.length; i++) {
+      for (let j = i + 1; j < planets.length; j++) {
+        const a = planets[i];
+        const b = planets[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const need = a.r + b.r + PLANET_GAP;
+        if (dist >= need) continue;
+        const push = (need - dist) / 2;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        a.x -= ux * push;
+        a.y -= uy * push;
+        b.x += ux * push;
+        b.y += uy * push;
+        moved = true;
+      }
+    }
+    // no dejar que nadie se salga del círculo de la zona
+    for (const p of planets) {
+      const d = Math.hypot(p.x, p.y);
+      const max = zoneRadius - p.r * 0.5;
+      if (d > max) {
+        p.x = (p.x / d) * max;
+        p.y = (p.y / d) * max;
+      }
+    }
+    if (!moved) break;
+  }
 }
 
 /**
@@ -30,7 +83,8 @@ function planetOffset(index: number, count: number, zoneRadius: number, r: () =>
  */
 export function layoutZones(groups: Map<string, Project[]>): ZonePlacement[] {
   const entries = [...groups.entries()];
-  const radii = entries.map(([, list]) => 90 + 34 * Math.sqrt(Math.max(1, list.length)));
+  // más aire por planeta: una zona con 20 proyectos necesita ~316px de radio
+  const radii = entries.map(([, list]) => 110 + 46 * Math.sqrt(Math.max(1, list.length)));
   const maxR = Math.max(...radii, 90);
   const n = entries.length;
   // separación mínima entre centros adyacentes del anillo
@@ -51,10 +105,15 @@ export function layoutZones(groups: Map<string, Project[]>): ZonePlacement[] {
       cy,
       radius,
       hue: root === ORPHAN_ZONE ? 230 : zoneHue(root),
-      planets: projects.map((project, idx) => {
-        const off = planetOffset(idx, projects.length, radius, r);
-        return { project, x: Math.round(cx + off.x), y: Math.round(cy + off.y) };
-      }),
+      planets: (() => {
+        // espiral áurea + relajación, en coordenadas locales a la zona
+        const local = projects.map((project, idx) => {
+          const off = planetOffset(idx, projects.length, radius, r);
+          return { project, x: off.x, y: off.y, r: planetRadius(project) };
+        });
+        relax(local, radius);
+        return local.map((p) => ({ project: p.project, x: Math.round(cx + p.x), y: Math.round(cy + p.y) }));
+      })(),
     };
   });
 }

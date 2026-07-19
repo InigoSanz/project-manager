@@ -1,7 +1,12 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { Project } from "@nebula/shared";
 import { PixelPlanet } from "./PixelPlanet";
+import { Icon } from "./Icon";
+import { useNebula } from "../stores/nebula";
+import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
+import { zoneColor } from "../pixel/palette";
 
 function LanguageBar({ project }: { project: Project }) {
   const langs = project.analysis?.languages ?? [];
@@ -16,9 +21,44 @@ function LanguageBar({ project }: { project: Project }) {
 }
 
 export function GridView({ projects }: { projects: Project[] }) {
+  const config = useNebula((s) => s.config);
+  // mismas agrupación y colores que el mapa, para que ambas vistas se lean igual
+  const zones = useMemo(
+    () => [...groupProjectsByRoot(projects, config?.roots ?? []).entries()],
+    [projects, config],
+  );
+
   return (
     <div className="h-full overflow-y-auto p-8 pt-24 max-sm:p-4 max-sm:pt-20 max-sm:pb-28">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto max-w-6xl space-y-8">
+        {zones.map(([root, list]) => (
+          <section key={root}>
+            <header className="mb-3 flex items-center gap-2.5">
+              <span
+                className="h-3 w-3 shrink-0 rounded-[3px]"
+                style={{ background: root === ORPHAN_ZONE ? "hsla(230 65% 62% / 1)" : zoneColor(root) }}
+              />
+              <h2 className="text-xs font-semibold tracking-wider text-slate-300 uppercase">
+                {root === ORPHAN_ZONE ? "Espacio profundo" : zoneName(root)}
+              </h2>
+              <span className="text-xs text-slate-500">{list.length}</span>
+              {root !== ORPHAN_ZONE && (
+                <span className="truncate font-mono text-[10px] text-slate-600" title={root}>
+                  {root}
+                </span>
+              )}
+            </header>
+            <ProjectGrid projects={list} />
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectGrid({ projects }: { projects: Project[] }) {
+  return (
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p, i) => (
           <motion.div
             key={p.id}
@@ -37,8 +77,12 @@ export function GridView({ projects }: { projects: Project[] }) {
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {p.git && (p.git.behind > 0 || p.git.conflicted > 0) && (
-                    <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-300" title={p.git.conflicted > 0 ? "conflictos" : `${p.git.behind} commits por detrás`}>
-                      ⚑ atención
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-300"
+                      title={p.git.conflicted > 0 ? "conflictos" : `${p.git.behind} commits por detrás`}
+                    >
+                      <Icon name="flag" size={10} />
+                      atención
                     </span>
                   )}
                   {p.git && (
@@ -72,6 +116,5 @@ export function GridView({ projects }: { projects: Project[] }) {
           </motion.div>
         ))}
       </div>
-    </div>
   );
 }

@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { AgentSession, Project } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
+import { Icon, type IconName } from "./Icon";
 
 /** Identidad visual por agente: icono + etiqueta (nunca solo color). */
-const AGENT_META: Record<string, { label: string; icon: string; chip: string }> = {
-  claude: { label: "Claude Code", icon: "✳", chip: "bg-orange-500/15 text-orange-300" },
-  codex: { label: "Codex CLI", icon: "⌁", chip: "bg-teal-500/15 text-teal-300" },
-  cursor: { label: "Cursor", icon: "▮", chip: "bg-violet-500/15 text-violet-300" },
-  gemini: { label: "Gemini CLI", icon: "✦", chip: "bg-sky-500/15 text-sky-300" },
-  antigravity: { label: "Antigravity", icon: "◒", chip: "bg-blue-500/15 text-blue-300" },
+const AGENT_META: Record<string, { label: string; icon: IconName; chip: string }> = {
+  claude: { label: "Claude Code", icon: "ai", chip: "bg-orange-500/15 text-orange-300" },
+  codex: { label: "Codex CLI", icon: "terminal", chip: "bg-teal-500/15 text-teal-300" },
+  cursor: { label: "Cursor", icon: "cube", chip: "bg-violet-500/15 text-violet-300" },
+  gemini: { label: "Gemini CLI", icon: "star", chip: "bg-sky-500/15 text-sky-300" },
+  antigravity: { label: "Antigravity", icon: "orbit", chip: "bg-blue-500/15 text-blue-300" },
 };
 
 function duration(s: AgentSession): string | null {
@@ -53,7 +54,11 @@ export function AgentTimeline({ project }: { project: Project }) {
     <div className="h-full overflow-y-auto p-1">
       <ol className="relative ml-3 space-y-3 border-l border-white/10 pl-5">
         {sessions.map((s, i) => {
-          const meta = AGENT_META[s.agent] ?? { label: s.agent, icon: "•", chip: "bg-white/10 text-slate-300" };
+          const meta = AGENT_META[s.agent] ?? {
+            label: s.agent,
+            icon: "dot" as IconName,
+            chip: "bg-white/10 text-slate-300",
+          };
           const live = s.status === "live";
           return (
             <motion.li
@@ -71,7 +76,8 @@ export function AgentTimeline({ project }: { project: Project }) {
               <div className="glass rounded-xl p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${meta.chip}`}>
-                    {meta.icon} {meta.label}
+                    <Icon name={meta.icon} size={11} />
+                    {meta.label}
                   </span>
                   {live && (
                     <span className="animate-pulse rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] text-emerald-300">

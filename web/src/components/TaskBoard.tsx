@@ -4,7 +4,8 @@ import type { Project, TaskItem, TaskStatus } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { TaskMetaBadges, TaskMetaEditor } from "./TaskMeta";
 import { QuickAddInput } from "./QuickAddInput";
-import { TaskEditor } from "./TaskEditor";
+import { TaskDialog, type TaskDialogState } from "./TaskDialog";
+import { Icon } from "./Icon";
 
 /** Orden de columna: vencidas primero, luego fecha asc, prioridad desc, resto. */
 function sortColumn(tasks: TaskItem[]): TaskItem[] {
@@ -230,7 +231,7 @@ function JiraKeyControl({ project }: { project: Project }) {
 export function TaskBoard({ project }: { project: Project }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
-  const [editing, setEditing] = useState<TaskItem | null>(null);
+  const [dialog, setDialog] = useState<TaskDialogState | null>(null);
   const version = useNebula((s) => s.tasksVersion[project.id] ?? 0);
 
   const refetch = (): void => {
@@ -278,9 +279,14 @@ export function TaskBoard({ project }: { project: Project }) {
             exit={{ opacity: 0, height: 0 }}
             className="glass shrink-0 rounded-xl border-l-2 border-l-indigo-400/70 p-3"
           >
-            <h3 className="mb-2 text-xs font-semibold tracking-wider text-indigo-300 uppercase">
-              ✳ Sugeridas por tus sesiones de IA
+            <h3 className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-wider text-indigo-300 uppercase">
+              <Icon name="ai" size={13} />
+              Sugeridas por tus sesiones de IA
             </h3>
+            <p className="mb-2 text-[11px] leading-relaxed text-slate-500">
+              Salen de lo que hicieron Claude, Codex o Cursor en este repo. Acéptalas para convertirlas en tareas o
+              descártalas: en ningún caso se toca el código.
+            </p>
             <ul className="space-y-2">
               {suggested.map((t) => (
                 <li key={t.id} className="flex items-center gap-3">
@@ -347,20 +353,28 @@ export function TaskBoard({ project }: { project: Project }) {
                       onDelete={() => void remove(t.id)}
                       onMove={(s) => void move(t.id, s)}
                       onMetaSaved={refetch}
-                      onEdit={() => setEditing(t)}
+                      onEdit={() => setDialog({ mode: "edit", task: t })}
                     />
                   ))}
                 </AnimatePresence>
                 {items.length === 0 && (
-                  <p className="mt-4 text-center text-xs text-slate-600">Arrastra tareas aquí</p>
+                  <p className="mt-4 text-center text-xs text-slate-600">Sin tareas aquí</p>
                 )}
               </div>
+              {/* alta directa en la columna que estás mirando */}
+              <button
+                onClick={() => setDialog({ mode: "create", defaults: { projectId: project.id, status: col.id } })}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/10 py-2 text-[11px] text-slate-500 transition-colors hover:border-white/25 hover:text-white"
+              >
+                <Icon name="plus" size={12} />
+                Añadir aquí
+              </button>
             </div>
           );
         })}
       </div>
 
-      <TaskEditor task={editing} onClose={() => setEditing(null)} onSaved={refetch} />
+      <TaskDialog state={dialog} onClose={() => setDialog(null)} onSaved={refetch} />
     </div>
   );
 }

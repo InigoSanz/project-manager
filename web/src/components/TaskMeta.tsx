@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TaskItem } from "@nebula/shared";
+import { Icon } from "./Icon";
 
 const PRIORITY_META: Record<number, { label: string; cls: string } | undefined> = {
   1: { label: "baja", cls: "text-slate-400" },
@@ -28,20 +29,25 @@ export function TaskMetaBadges({ task }: { task: TaskItem }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {prio && (
-        <span className={`text-[10px] ${prio.cls}`} title={`prioridad ${prio.label}`}>
-          ▲ {prio.label}
+        <span className={`inline-flex items-center gap-1 text-[10px] ${prio.cls}`} title={`prioridad ${prio.label}`}>
+          <Icon name="priority" size={10} />
+          {prio.label}
         </span>
       )}
       {due && (
-        <span className={`rounded px-1.5 py-px text-[10px] ${due.cls}`} title={`vence ${task.dueDate}`}>
-          ⏱ {due.text}
+        <span
+          className={`inline-flex items-center gap-1 rounded px-1.5 py-px text-[10px] ${due.cls}`}
+          title={`vence ${task.dueDate}`}
+        >
+          <Icon name="clock" size={10} />
+          {due.text}
         </span>
       )}
     </span>
   );
 }
 
-/** Botón 📅 con popover para editar fecha y prioridad. */
+/** Botón de calendario con popover para editar fecha y prioridad. */
 export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () => void }) {
   const [open, setOpen] = useState(false);
   const [due, setDue] = useState(task.dueDate ?? "");
@@ -62,9 +68,9 @@ export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () 
       <button
         onClick={() => setOpen((o) => !o)}
         title="Fecha y prioridad"
-        className="rounded p-1 text-xs text-slate-500 opacity-45 transition-opacity group-hover:opacity-100 hover:text-white pointer-coarse:opacity-100"
+        className="rounded p-1 text-slate-500 opacity-45 transition-opacity group-hover:opacity-100 hover:text-white pointer-coarse:opacity-100"
       >
-        📅
+        <Icon name="calendar" size={13} />
       </button>
       <AnimatePresence>
         {open && (

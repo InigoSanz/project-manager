@@ -3,6 +3,7 @@ import type { Project } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { useToasts } from "./Toast";
 import { describeParse, parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
+import { Icon } from "./Icon";
 
 /**
  * Alta rápida unificada de tareas con la sintaxis de tokens
@@ -41,10 +42,6 @@ export function QuickAddInput({
     onCreated?.();
   };
 
-  const hint = fixedProject
-    ? "!alta/!media/!baja · ^hoy ^mañana ^vie ^25/07"
-    : "@proyecto · !alta/!media/!baja · ^hoy ^mañana ^vie ^25/07";
-
   return (
     <form onSubmit={(e) => void add(e)} className="shrink-0">
       <div className="flex gap-2">
@@ -52,26 +49,39 @@ export function QuickAddInput({
           value={text}
           onChange={(e) => setText(e.target.value)}
           autoFocus={autoFocus}
-          placeholder={placeholder ?? "Añade una tarea…  (usa @proyecto)"}
+          placeholder={placeholder ?? "Escribe y pulsa Enter para añadir rápido…"}
           className="glass w-full flex-1 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-accent/60 focus:outline-none max-sm:text-base"
         />
+        {/* escotilla a la ficha completa, con lo que ya se haya escrito */}
+        <button
+          type="button"
+          title="Abrir la ficha completa"
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent("nebula:new-task", {
+                detail: { title: text.trim(), projectId: fixedProject?.id ?? null },
+              }),
+            )
+          }
+          className="glass rounded-lg px-2.5 text-slate-400 transition-colors hover:text-white"
+        >
+          <Icon name="chevronDown" size={14} />
+        </button>
         {withButton && (
           <button
             type="submit"
-            className="rounded-lg bg-indigo-500/25 px-4 text-sm text-white transition-colors hover:bg-indigo-500/40"
+            className="rounded-lg bg-accent/25 px-4 text-sm text-white transition-colors hover:bg-accent/40"
           >
             Añadir
           </button>
         )}
       </div>
-      {text.trim() ? (
+      {text.trim() && (
         <p className="mt-1 text-[11px] text-slate-500">
           {parse.unknownMention
             ? `@${parse.unknownMention} no casa con ningún proyecto — irá a tu bandeja personal`
             : `→ ${describeParse(parse)} · Enter para crear`}
         </p>
-      ) : (
-        <p className="mt-1 text-[10px] text-slate-600">{hint}</p>
       )}
     </form>
   );

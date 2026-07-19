@@ -16,8 +16,8 @@ const STEPS = [
   },
   {
     icon: "⌨",
-    title: "Ctrl+K para todo lo demás",
-    body: "Busca proyectos y tareas, o crea una al vuelo: «preparar demo @portfolio !alta ^vie». La ayuda completa siempre está en la tecla ?",
+    title: "Crea una tarea con la tecla N",
+    body: "Eliges proyecto, fecha y prioridad con botones, sin aprenderte ninguna sintaxis. Con Ctrl+K buscas cualquier proyecto o tarea, y la ayuda completa está siempre en la tecla ?",
   },
 ];
 

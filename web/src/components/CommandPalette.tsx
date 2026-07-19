@@ -116,7 +116,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
       if (parse.title) {
         base.push({
           id: "quick-add",
-          label: `➕ Crear tarea: «${parse.title}»`,
+          label: `+ Crear tarea: «${parse.title}»`,
           hint: `en ${parse.project?.name ?? "Sin proyecto"}`,
           run: () => {
             void submitQuickAdd(parse).then((dest) =>

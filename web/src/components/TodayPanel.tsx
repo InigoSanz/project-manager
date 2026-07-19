@@ -5,19 +5,37 @@ import type { TodayData, TodayTask } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { TaskMetaBadges } from "./TaskMeta";
 import { QuickAddInput } from "./QuickAddInput";
-import { TaskEditor } from "./TaskEditor";
+import { TaskDialog, type TaskDialogState } from "./TaskDialog";
+import { Icon, type IconName } from "./Icon";
 
-const SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
-  jira: { label: "◆ Jira", cls: "bg-sky-500/15 text-sky-300" },
-  planner: { label: "▦ Planner", cls: "bg-blue-500/15 text-blue-300" },
-  agent: { label: "✳ IA", cls: "bg-indigo-500/15 text-indigo-300" },
+const SOURCE_BADGE: Record<string, { label: string; icon: IconName; cls: string }> = {
+  jira: { label: "Jira", icon: "jira", cls: "bg-sky-500/15 text-sky-300" },
+  planner: { label: "Planner", icon: "planner", cls: "bg-blue-500/15 text-blue-300" },
+  agent: { label: "IA", icon: "ai", cls: "bg-indigo-500/15 text-indigo-300" },
 };
 
-const AGENT_ICON: Record<string, string> = { claude: "✳", codex: "⌁", cursor: "▮", gemini: "✦", antigravity: "◒" };
+const AGENT_ICON: Record<string, IconName> = {
+  claude: "ai",
+  codex: "terminal",
+  cursor: "cube",
+  gemini: "star",
+  antigravity: "orbit",
+};
+
+/** Distintivo de origen (Jira, Planner o sesión de IA). */
+function SourceBadge({ source }: { source: string }) {
+  const badge = SOURCE_BADGE[source];
+  if (!badge) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-px ${badge.cls}`}>
+      <Icon name={badge.icon} size={10} />
+      {badge.label}
+    </span>
+  );
+}
 
 function TaskRow({ task, onChanged, onEdit }: { task: TodayTask; onChanged: () => void; onEdit: () => void }) {
   const [done, setDone] = useState(false);
-  const badge = SOURCE_BADGE[task.source];
 
   const complete = async (): Promise<void> => {
     setDone(true);
@@ -40,7 +58,7 @@ function TaskRow({ task, onChanged, onEdit }: { task: TodayTask; onChanged: () =
             : "border-slate-600 text-transparent hover:border-emerald-400 hover:text-emerald-400/60"
         }`}
       >
-        ✓
+        <Icon name="check" size={10} strokeWidth={2.2} />
       </button>
       <div className="min-w-0 flex-1">
         <button
@@ -59,7 +77,7 @@ function TaskRow({ task, onChanged, onEdit }: { task: TodayTask; onChanged: () =
             </Link>
           )}
           <TaskMetaBadges task={task} />
-          {badge && <span className={`rounded px-1 py-px ${badge.cls}`}>{badge.label}</span>}
+          <SourceBadge source={task.source} />
           {task.externalMeta?.syncError && (
             <span className="text-amber-400/80" title={task.externalMeta.syncError}>
               ⚠ no sincronizada
@@ -85,14 +103,15 @@ function InboxRow({ task, onChanged }: { task: TodayTask; onChanged: () => void 
     });
     onChanged();
   };
-  const badge = SOURCE_BADGE[task.source];
   return (
     <li className="flex items-center gap-2 py-1.5">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-slate-200" title={task.title}>
           {task.title}
         </p>
-        {badge && <span className={`mt-0.5 inline-block rounded px-1 py-px text-[10px] ${badge.cls}`}>{badge.label}</span>}
+        <span className="mt-0.5 inline-block text-[10px]">
+          <SourceBadge source={task.source} />
+        </span>
       </div>
       <select
         defaultValue=""
@@ -127,7 +146,7 @@ function Section({ title, count, children, hint }: { title: string; count?: numb
 
 export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [data, setData] = useState<TodayData | null>(null);
-  const [editing, setEditing] = useState<TodayTask | null>(null);
+  const [dialog, setDialog] = useState<TaskDialogState | null>(null);
   const tasksVersion = useNebula((s) => s.tasksVersion);
 
   const refresh = async (): Promise<void> => {
@@ -161,23 +180,37 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
             className="glass fixed top-0 right-0 bottom-0 z-50 flex w-full flex-col border-l border-white/10 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:w-[420px]"
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-bold text-white">◔ Hoy</h2>
-              <div className="flex items-center gap-3">
+              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-white">
+                <Icon name="today" size={18} />
+                Hoy
+              </h2>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.dispatchEvent(new Event("nebula:open-help"))}
-                  className="text-slate-500 hover:text-white"
+                  className="rounded-md p-1.5 text-slate-500 hover:text-white"
                   title="Ayuda"
                 >
-                  ?
+                  <Icon name="help" size={15} />
                 </button>
-                <button onClick={onClose} className="text-slate-500 hover:text-white" title="Cerrar (Esc o T)">
-                  ✕
+                <button
+                  onClick={onClose}
+                  className="rounded-md p-1.5 text-slate-500 hover:text-white"
+                  title="Cerrar (Esc o T)"
+                >
+                  <Icon name="close" size={15} />
                 </button>
               </div>
             </div>
 
-            {/* Añadir rápido */}
-            <div className="mt-3">
+            {/* Crear tarea: botón principal + atajo de una línea para quien ya lo domina */}
+            <button
+              onClick={() => window.dispatchEvent(new Event("nebula:new-task"))}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-accent/25 px-3 py-2.5 text-sm text-white transition-colors hover:bg-accent/40"
+            >
+              <Icon name="plus" size={15} />
+              Nueva tarea
+            </button>
+            <div className="mt-2">
               <QuickAddInput onCreated={() => void refresh()} />
             </div>
 
@@ -190,7 +223,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                     <ul>
                       <AnimatePresence>
                         {data.doing.map((t) => (
-                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setEditing(t)} />
+                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setDialog({ mode: "edit", task: t })} />
                         ))}
                       </AnimatePresence>
                     </ul>
@@ -202,7 +235,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                         {data.attention.map((a) => (
                           <li key={a.projectId} className="py-1">
                             <Link to={`/project/${a.projectId}`} onClick={onClose} className="group flex items-baseline gap-2 text-sm">
-                              <span className="text-amber-300/90">⚑</span>
+                              <Icon name="flag" size={12} className="text-amber-300/90" />
                               <span className="text-slate-200 group-hover:text-white">{a.name}</span>
                               <span className="truncate text-[11px] text-slate-500">{a.reasons.join(" · ")}</span>
                             </Link>
@@ -219,8 +252,9 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                           <li key={i} className="py-1">
                             <Link to={`/project/${l.projectId}`} onClick={onClose} className="flex items-baseline gap-2 text-sm">
                               <span className="animate-pulse text-emerald-400">●</span>
-                              <span className="text-slate-200">
-                                {AGENT_ICON[l.agent] ?? "•"} {l.agent}
+                              <span className="flex items-center gap-1.5 text-slate-200">
+                                <Icon name={AGENT_ICON[l.agent] ?? "dot"} size={12} />
+                                {l.agent}
                               </span>
                               <span className="text-slate-500">en {l.projectName}</span>
                             </Link>
@@ -273,7 +307,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                     <ul>
                       <AnimatePresence>
                         {data.todo.map((t) => (
-                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setEditing(t)} />
+                          <TaskRow key={t.id} task={t} onChanged={() => void refresh()} onEdit={() => setDialog({ mode: "edit", task: t })} />
                         ))}
                       </AnimatePresence>
                     </ul>
@@ -294,7 +328,7 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
           </motion.aside>
 
-          <TaskEditor task={editing} onClose={() => setEditing(null)} onSaved={() => void refresh()} />
+          <TaskDialog state={dialog} onClose={() => setDialog(null)} onSaved={() => void refresh()} />
         </>
       )}
     </AnimatePresence>
