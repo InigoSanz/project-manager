@@ -24,6 +24,34 @@ export interface ProjectMetrics {
   lastCommitAt: string | null;
 }
 
+/** Datos del package.json que sirven para actuar (lanzar scripts, versión…). */
+export interface PackageInfo {
+  name: string | null;
+  version: string | null;
+  description: string | null;
+  /** nombres de los scripts disponibles, en el orden del package.json */
+  scripts: string[];
+  /** gestor deducido del lockfile: pnpm | npm | yarn | bun */
+  packageManager: "pnpm" | "npm" | "yarn" | "bun";
+  /** el repo declara workspaces (monorepo) */
+  monorepo: boolean;
+}
+
+/** Señales de salud del repo: lo que un desarrollador mira al llegar nuevo. */
+export interface ProjectHealth {
+  /** nombre del fichero README encontrado, o null */
+  readme: string | null;
+  license: string | null;
+  /** ficheros de workflows de CI detectados (.github/workflows, etc.) */
+  ci: string[];
+  /** framework de tests detectado por dependencias/config */
+  tests: string | null;
+  /** hay un .env.example que documente la configuración */
+  envExample: boolean;
+  /** hay un .env real (nunca se lee su contenido) */
+  envLocal: boolean;
+}
+
 export interface ProjectAnalysis {
   languages: LanguageStat[];
   /** Frameworks/tecnologías detectadas: "react", "fastify", "django"... */
@@ -31,6 +59,10 @@ export interface ProjectAnalysis {
   metrics: ProjectMetrics;
   /** Rasgos deterministas para el sistema visual */
   traits: ProjectTraits;
+  /** package.json del repo; null si no es un proyecto Node */
+  pkg?: PackageInfo | null;
+  /** señales de salud del repositorio */
+  health?: ProjectHealth;
 }
 
 /** Entrada del sistema de arte generativo. Determinista por repo. */
@@ -76,6 +108,22 @@ export interface GitBranch {
   subject: string | null;
 }
 
+/** Una línea de diff ya clasificada (el cliente no interpreta el formato). */
+export interface GitDiffLine {
+  kind: "hunk" | "add" | "del" | "context";
+  text: string;
+}
+
+export interface GitFileDiff {
+  path: string;
+  staged: boolean;
+  /** binario: no hay nada legible que mostrar */
+  binary: boolean;
+  /** se cortó por tamaño */
+  truncated: boolean;
+  lines: GitDiffLine[];
+}
+
 export interface GitDetail {
   status: GitStatusSummary;
   commits: GitCommit[];
@@ -102,6 +150,8 @@ export interface Project {
   jiraKey: string | null;
   /** Clave Jira propuesta por heurística, pendiente de confirmar */
   jiraKeySuggestion: string | null;
+  /** URL del remoto `origin` tal cual la reporta git (puede ser SSH) */
+  remoteUrl: string | null;
 }
 
 // ---------- Agentes ----------
@@ -129,7 +179,7 @@ export interface AgentSession {
 // ---------- Tareas ----------
 
 export type TaskStatus = "suggested" | "todo" | "doing" | "done" | "dismissed";
-export type TaskSource = "manual" | "agent" | "email" | "jira" | "planner";
+export type TaskSource = "manual" | "agent" | "jira" | "planner" | "github";
 
 export interface TaskItem {
   id: string;
@@ -186,6 +236,39 @@ export interface ObsidianNote {
 
 // ---------- Config ----------
 
+export interface GitHubConfig {
+  /** Personal Access Token (classic o fine-grained con acceso de lectura) */
+  token: string;
+}
+
+export interface GitHubStatus {
+  configured: boolean;
+  ok: boolean;
+  user: string | null;
+  error: string | null;
+  lastSyncAt: string | null;
+  pullCount: number;
+  issueCount: number;
+}
+
+/** Pull request abierta. No es una tarea: es un estado que se consulta. */
+export interface PullRequest {
+  id: number;
+  number: number;
+  title: string;
+  url: string;
+  /** `owner/repo` */
+  repo: string;
+  /** proyecto local al que corresponde, si se pudo emparejar por el remoto */
+  projectId: string | null;
+  draft: boolean;
+  /** te han pedido revisarla */
+  reviewRequested: boolean;
+  /** la has abierto tú */
+  mine: boolean;
+  updatedAt: string;
+}
+
 export interface JiraConfig {
   mode: "cloud" | "server";
   /** https://miempresa.atlassian.net o URL del Jira on-premise */
@@ -229,9 +312,14 @@ export interface NebulaConfig {
   notificationEvents?: NotificationEvents;
   /** minutos entre syncs de Jira/Planner (default 10) */
   syncMinutes?: number;
+  /** comando para abrir un proyecto en el editor (default "code") */
+  editorCommand?: string;
+  /** navegador para abrir el remoto; vacío = Chrome si está instalado */
+  browserCommand?: string;
   integrations?: {
     jira?: JiraConfig;
     planner?: PlannerConfig;
+    github?: GitHubConfig;
   };
 }
 
@@ -259,10 +347,36 @@ export interface PlannerStatus {
 
 // ---------- Eventos WebSocket ----------
 
+// ---------- Ejecución de scripts ----------
+
+export interface RunInfo {
+  id: string;
+  projectId: string;
+  projectName: string;
+  /** nombre del script del package.json */
+  script: string;
+  /** línea ejecutada, para mostrarla tal cual */
+  command: string;
+  status: "running" | "done" | "failed";
+  startedAt: string;
+  endedAt: string | null;
+  exitCode: number | null;
+  /** URL local detectada en la salida (servidores de desarrollo) */
+  url: string | null;
+}
+
+export interface RunOutputChunk {
+  stream: "stdout" | "stderr";
+  line: string;
+}
+
 export type WsEvent =
   | { type: "projects.changed"; projects: Project[] }
   | { type: "project.updated"; project: Project }
   | { type: "agent.activity"; projectId: string; session: AgentSession }
   | { type: "tasks.changed"; projectId: string }
   | { type: "scan.state"; scanning: boolean }
-  | { type: "toast"; level: "success" | "error" | "info"; message: string; link?: string };
+  | { type: "toast"; level: "success" | "error" | "info"; message: string; link?: string }
+  | { type: "run.started"; run: RunInfo }
+  | { type: "run.output"; runId: string; chunks: RunOutputChunk[] }
+  | { type: "run.exited"; run: RunInfo };

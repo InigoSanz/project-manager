@@ -18,6 +18,7 @@ interface ProjectRow {
   git: string | null;
   jira_key: string | null;
   jira_key_suggestion: string | null;
+  remote_url: string | null;
 }
 
 export class ProjectStore {
@@ -49,6 +50,11 @@ export class ProjectStore {
 
   saveGit(id: string, git: GitStatusSummary): void {
     this.db.prepare(`UPDATE projects SET git = ? WHERE id = ?`).run(JSON.stringify(git), id);
+  }
+
+  /** URL del remoto `origin`, para poder abrir el repo sin consultar git. */
+  saveRemoteUrl(id: string, remoteUrl: string | null): void {
+    this.db.prepare(`UPDATE projects SET remote_url = ? WHERE id = ?`).run(remoteUrl, id);
   }
 
   private toProject(row: ProjectRow): Project {
@@ -86,6 +92,7 @@ export class ProjectStore {
       tasks: { open: tasks.open ?? 0, suggested: tasks.suggested ?? 0 },
       jiraKey: row.jira_key,
       jiraKeySuggestion: row.jira_key_suggestion,
+      remoteUrl: row.remote_url,
     };
   }
 

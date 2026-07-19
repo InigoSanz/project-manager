@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import type { FastifyInstance } from "fastify";
+import { requireLoopback } from "../security.js";
 
 interface FsEntry {
   name: string;
@@ -51,7 +52,7 @@ function listDir(dir: string): FsEntry[] {
   return out.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
-/** Puntos de partida del navegador: unidades (win32) o / + accesos rápidos. */
+/** Puntos de partida del explorador: unidades (win32) o / + accesos rápidos. */
 function listRoots(): Array<{ name: string; path: string }> {
   const roots: Array<{ name: string; path: string }> = [];
   if (process.platform === "win32") {
@@ -75,9 +76,17 @@ function listRoots(): Array<{ name: string; path: string }> {
 }
 
 export function registerFsRoutes(app: FastifyInstance): void {
-  app.get("/api/fs/roots", async () => listRoots());
+  // Explorar el disco es la razón de ser del selector de carpetas, así que no
+  // se puede confinar a las raíces ya configuradas sin romperlo. La protección
+  // es doble: el cortafuegos de origen (routes.ts) y exigir que la petición
+  // venga de este mismo equipo — desde el móvil no se enumera nada.
+  app.get("/api/fs/roots", async (req, reply) => {
+    if (!requireLoopback(req, reply)) return reply;
+    return listRoots();
+  });
 
   app.get<{ Querystring: { path?: string } }>("/api/fs/list", async (req, reply) => {
+    if (!requireLoopback(req, reply)) return reply;
     const target = req.query.path;
     if (!target || !path.isAbsolute(target) || !isDir(target)) {
       return reply.code(400).send({ error: "ruta inválida" });

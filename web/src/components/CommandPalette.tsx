@@ -6,6 +6,8 @@ import { useNebula } from "../stores/nebula";
 import { useToasts } from "./Toast";
 import { parseQuickAdd, submitQuickAdd } from "../lib/quickAdd";
 
+import { openProject } from "./ProjectActions";
+
 const STATUS_ICON: Record<string, string> = { todo: "○", doing: "◐", done: "✓", suggested: "✳" };
 
 interface Command {
@@ -76,12 +78,33 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
     return [
       ...projects
         .filter((p) => p.present)
-        .map((p) => ({
-          id: `p:${p.id}`,
-          label: p.name,
-          hint: p.path,
-          run: close(() => navigate(`/project/${p.id}`)),
-        })),
+        .flatMap((p) => [
+          {
+            id: `p:${p.id}`,
+            label: p.name,
+            hint: p.path,
+            run: close(() => navigate(`/project/${p.id}`)),
+          },
+          // abrir sin pasar por la ficha del proyecto
+          {
+            id: `p:${p.id}:editor`,
+            label: `Abrir ${p.name} en el editor`,
+            hint: "acción",
+            run: close(() => void openProject(p.id, "editor")),
+          },
+          {
+            id: `p:${p.id}:terminal`,
+            label: `Abrir una terminal en ${p.name}`,
+            hint: "acción",
+            run: close(() => void openProject(p.id, "terminal")),
+          },
+          {
+            id: `p:${p.id}:explorer`,
+            label: `Abrir la carpeta de ${p.name}`,
+            hint: "acción",
+            run: close(() => void openProject(p.id, "explorer")),
+          },
+        ]),
       { id: "today", label: "Abrir Hoy", hint: "tecla T", run: close(() => window.dispatchEvent(new Event("nebula:open-today"))) },
       { id: "home", label: "Ir al mapa", hint: "inicio", run: close(() => navigate("/")) },
       { id: "rescan", label: "Re-escanear proyectos", hint: "acción", run: close(() => void rescan()) },

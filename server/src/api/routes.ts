@@ -1,6 +1,15 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { NebulaConfig, TaskStatus, TodayData, TodayTask } from "@nebula/shared";
-import { getDetail } from "../git/index.js";
+import {
+  getDetail,
+  getFileDiff,
+  gitCheckout,
+  gitFetch,
+  gitPull,
+  searchLog,
+} from "../git/index.js";
 import type { ProjectStore } from "../projects/store.js";
 import type { Scanner } from "../scanner/index.js";
 import type { AgentsManager } from "../agents/manager.js";
@@ -13,6 +22,11 @@ import type { JiraSync } from "../integrations/jira.js";
 import type { PlannerSync } from "../integrations/planner.js";
 import { suggestJiraKey } from "../integrations/jira.js";
 import { lanUrls } from "../lan.js";
+import { checkOrigin, MASKED_TOKEN, redactConfig, requireLoopback, sanitizeConfigPatch } from "../security.js";
+import { openProject, remoteToBrowserUrl, type OpenTarget } from "../actions/open.js";
+import type { RunManager } from "../runs/manager.js";
+import type { NotesStore } from "../notes/store.js";
+import type { GitHubSync } from "../integrations/github.js";
 
 export interface ApiDeps {
   store: ProjectStore;
@@ -21,6 +35,9 @@ export interface ApiDeps {
   tasks: TaskStore;
   jira: JiraSync;
   planner: PlannerSync;
+  runs: RunManager;
+  notes: NotesStore;
+  github: GitHubSync;
   getConfig: () => NebulaConfig;
   setConfig: (cfg: NebulaConfig) => void;
   onTasksChanged: (projectId: string) => void;
@@ -30,6 +47,14 @@ export interface ApiDeps {
 
 export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
   const { store, scanner } = deps;
+
+  // Cortafuegos de origen: una web cualquiera no puede hablar con el daemon
+  // (el navegador la deja salir, así que la comprobación tiene que ser aquí).
+  app.addHook("onRequest", async (req, reply) => {
+    if (!checkOrigin(req, deps.getConfig())) {
+      return reply.code(403).send({ error: "origen no permitido" });
+    }
+  });
 
   app.get("/api/health", async () => ({ ok: true, name: "nebula" }));
 
@@ -43,11 +68,122 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     return project;
   });
 
+  const OPEN_TARGETS: OpenTarget[] = ["editor", "terminal", "explorer", "remote"];
+
+  // Abrir en el editor / terminal / explorador / navegador. Solo desde este
+  // equipo: lanzar programas desde el móvil no tendría sentido y sería un
+  // agujero. Recibe id de proyecto, nunca una ruta.
+  app.post<{ Params: { id: string }; Body: { target?: string } }>(
+    "/api/projects/:id/open",
+    async (req, reply) => {
+      if (!requireLoopback(req, reply)) return reply;
+      const target = req.body?.target as OpenTarget | undefined;
+      if (!target || !OPEN_TARGETS.includes(target)) {
+        return reply.code(400).send({ error: "destino inválido" });
+      }
+      const project = store.get(req.params.id);
+      if (!project) return reply.code(404).send({ error: "not found" });
+
+      const cfg = deps.getConfig();
+      const result = openProject(target, project.path, {
+        editorCommand: cfg.editorCommand,
+        browserCommand: cfg.browserCommand,
+        remoteUrl: project.remoteUrl,
+      });
+      if (!result.ok) return reply.code(409).send({ error: result.error });
+      return { ok: true, url: target === "remote" ? remoteToBrowserUrl(project.remoteUrl) : null };
+    },
+  );
+
   app.get<{ Params: { id: string } }>("/api/projects/:id/git", async (req, reply) => {
     const project = store.get(req.params.id);
     if (!project || !project.present) return reply.code(404).send({ error: "not found" });
     return getDetail(project.path);
   });
+
+  app.get<{ Params: { id: string }; Querystring: { path?: string; staged?: string } }>(
+    "/api/projects/:id/git/diff",
+    async (req, reply) => {
+      const project = store.get(req.params.id);
+      if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+      const file = req.query.path;
+      if (!file) return reply.code(400).send({ error: "falta el fichero" });
+      return getFileDiff(project.path, file, req.query.staged === "1");
+    },
+  );
+
+  app.get<{ Params: { id: string }; Querystring: { q?: string } }>(
+    "/api/projects/:id/git/log",
+    async (req, reply) => {
+      const project = store.get(req.params.id);
+      if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+      return searchLog(project.path, req.query.q ?? "");
+    },
+  );
+
+  // Operaciones que tocan el repositorio: solo desde este equipo.
+  app.post<{ Params: { id: string; action: string }; Body: { branch?: string } }>(
+    "/api/projects/:id/git/:action",
+    async (req, reply) => {
+      if (!requireLoopback(req, reply)) return reply;
+      const project = store.get(req.params.id);
+      if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+
+      let result;
+      switch (req.params.action) {
+        case "fetch":
+          result = await gitFetch(project.path);
+          break;
+        case "pull":
+          result = await gitPull(project.path);
+          break;
+        case "checkout": {
+          const branch = req.body?.branch;
+          if (!branch) return reply.code(400).send({ error: "falta la rama" });
+          result = await gitCheckout(project.path, branch);
+          break;
+        }
+        default:
+          return reply.code(400).send({ error: "acción desconocida" });
+      }
+      // el estado en pantalla debe reflejar el cambio inmediatamente
+      await scanner.refreshGit(project.path);
+      if (!result.ok) return reply.code(409).send({ error: result.message });
+      return result;
+    },
+  );
+
+  // README del repo, para leerlo sin salir de Nebula
+  app.get<{ Params: { id: string } }>("/api/projects/:id/readme", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+    const file = project.analysis?.health?.readme;
+    if (!file) return reply.code(204).send();
+    try {
+      const full = path.join(project.path, file);
+      // el nombre viene de nuestro propio análisis, pero se comprueba igual
+      if (!full.startsWith(project.path)) return reply.code(400).send({ error: "ruta inválida" });
+      const body = fs.readFileSync(full, "utf8").slice(0, 200_000);
+      return { file, body };
+    } catch {
+      return reply.code(204).send();
+    }
+  });
+
+  // Bloc de notas propio (distinto de las notas de Obsidian, que son de lectura)
+  app.get<{ Params: { id: string } }>("/api/projects/:id/scratchpad", async (req) => {
+    return deps.notes.get(req.params.id);
+  });
+
+  app.put<{ Params: { id: string }; Body: { body?: string } }>(
+    "/api/projects/:id/scratchpad",
+    async (req, reply) => {
+      const project = store.get(req.params.id);
+      if (!project) return reply.code(404).send({ error: "not found" });
+      if (typeof req.body?.body !== "string") return reply.code(400).send({ error: "cuerpo inválido" });
+      return deps.notes.save(req.params.id, req.body.body.slice(0, 100_000));
+    },
+  );
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/sessions", async (req, reply) => {
     const project = deps.store.get(req.params.id);
@@ -281,17 +417,91 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     };
   });
 
+  // ---------- Ejecución de scripts (solo desde este equipo) ----------
+
+  app.get("/api/runs", async () => deps.runs.list());
+
+  app.get<{ Params: { runId: string } }>("/api/runs/:runId", async (req, reply) => {
+    const run = deps.runs.get(req.params.runId);
+    if (!run) return reply.code(404).send({ error: "not found" });
+    return run;
+  });
+
+  app.post<{ Params: { id: string }; Body: { script?: string } }>(
+    "/api/projects/:id/runs",
+    async (req, reply) => {
+      if (!requireLoopback(req, reply)) return reply;
+      const project = store.get(req.params.id);
+      if (!project) return reply.code(404).send({ error: "not found" });
+
+      const pkg = project.analysis?.pkg;
+      const script = req.body?.script;
+      // el script debe existir en el package.json: nunca se ejecuta texto libre
+      if (!script || !pkg?.scripts.includes(script)) {
+        return reply.code(400).send({ error: "script desconocido en este proyecto" });
+      }
+
+      const result = deps.runs.start({
+        projectId: project.id,
+        projectName: project.name,
+        cwd: project.path,
+        script,
+        packageManager: pkg.packageManager,
+      });
+      if (!result.ok) return reply.code(409).send({ error: result.error });
+      return result.info;
+    },
+  );
+
+  app.post<{ Params: { runId: string } }>("/api/runs/:runId/stop", async (req, reply) => {
+    if (!requireLoopback(req, reply)) return reply;
+    if (!deps.runs.stop(req.params.runId)) return reply.code(404).send({ error: "not found" });
+    return { ok: true };
+  });
+
+  // ---------- GitHub ----------
+
+  app.get("/api/github/status", async () => deps.github.getStatus());
+
+  app.get("/api/github/pulls", async () => deps.github.getPulls());
+
+  app.post<{ Body: { token?: string } }>("/api/github/test", async (req, reply) => {
+    const token = req.body?.token;
+    if (!token) return reply.code(400).send({ error: "falta el token" });
+    return deps.github.test({ token });
+  });
+
+  app.post("/api/github/sync", async () => {
+    await deps.github.sync();
+    return deps.github.getStatus();
+  });
+
   app.get("/api/lan-info", async () => {
     const cfg = loadConfig();
     return { enabled: cfg.lanAccess, urls: lanUrls(cfg.port) };
   });
 
-  app.get("/api/config", async () => loadConfig());
+  app.get("/api/config", async () => redactConfig(loadConfig()));
 
-  app.put<{ Body: Partial<NebulaConfig> }>("/api/config", async (req) => {
-    const cfg = { ...loadConfig(), ...req.body };
+  app.put<{ Body: Partial<NebulaConfig> }>("/api/config", async (req, reply) => {
+    const parsed = sanitizeConfigPatch(req.body);
+    if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
+
+    const current = loadConfig();
+    const patch = parsed.value;
+    // el cliente reenvía el token enmascarado cuando no lo ha tocado: en ese
+    // caso conservamos el real en vez de guardar los puntitos
+    const jira = patch.integrations?.jira;
+    if (jira && jira.token === MASKED_TOKEN) {
+      patch.integrations = {
+        ...patch.integrations,
+        jira: { ...jira, token: current.integrations?.jira?.token ?? "" },
+      };
+    }
+
+    const cfg = { ...current, ...patch };
     saveConfig(cfg);
     deps.setConfig(cfg);
-    return cfg;
+    return redactConfig(cfg);
   });
 }

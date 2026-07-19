@@ -38,7 +38,9 @@ function toTask(r: TaskRow): TaskItem {
 const USEFUL_ORDER = `priority DESC, CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date ASC, updated_at DESC`;
 
 /** Bandejas virtuales (tareas sin repo asociado). */
-export const INBOX_IDS = ["inbox", "jira-inbox", "planner-inbox"] as const;
+export const INBOX_IDS = ["inbox", "jira-inbox", "planner-inbox", "github-inbox"] as const;
+/** Los mismos ids, listos para interpolar en un `IN (...)` de SQL. */
+const INBOX_SQL = INBOX_IDS.map((id) => `'${id}'`).join(",");
 
 export class TaskStore {
   constructor(private db: DB) {}
@@ -129,7 +131,7 @@ export class TaskStore {
 
   /** Tareas por estado en TODOS los proyectos (para la vista Hoy). */
   byStatus(status: TaskStatus, excludeInbox = true, limit = 30): TaskItem[] {
-    const notIn = excludeInbox ? `AND project_id NOT IN ('inbox','jira-inbox','planner-inbox')` : "";
+    const notIn = excludeInbox ? `AND project_id NOT IN (${INBOX_SQL})` : "";
     const rows = this.db
       .prepare(`SELECT * FROM tasks WHERE status = ? ${notIn} ORDER BY ${USEFUL_ORDER} LIMIT ?`)
       .all(status, limit) as TaskRow[];
@@ -140,7 +142,7 @@ export class TaskStore {
   inboxAll(): TaskItem[] {
     const rows = this.db
       .prepare(
-        `SELECT * FROM tasks WHERE project_id IN ('inbox','jira-inbox','planner-inbox')
+        `SELECT * FROM tasks WHERE project_id IN (${INBOX_SQL})
          AND status IN ('todo','doing','suggested') ORDER BY updated_at DESC LIMIT 50`,
       )
       .all() as TaskRow[];

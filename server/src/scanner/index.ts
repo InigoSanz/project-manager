@@ -3,7 +3,7 @@ import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import type { NebulaConfig } from "@nebula/shared";
 import { analyzeProject } from "../analyzer/index.js";
-import { getStatus } from "../git/index.js";
+import { getStatus, getRemoteUrl } from "../git/index.js";
 import type { ProjectStore } from "../projects/store.js";
 
 /** Busca directorios con .git bajo las raíces configuradas. */
@@ -84,11 +84,13 @@ export class Scanner {
     if (this.analyzing.has(id)) return;
     this.analyzing.add(id);
     try {
-      const [analysis, git] = await Promise.all([
+      const [analysis, git, remoteUrl] = await Promise.all([
         analyzeProject(repoPath, this.cfg.excludes),
         getStatus(repoPath).catch(() => null),
+        getRemoteUrl(repoPath).catch(() => null),
       ]);
       if (git) this.store.saveAnalysis(id, analysis, git);
+      this.store.saveRemoteUrl(id, remoteUrl);
       this.events.onProjectUpdated(id);
     } catch (err) {
       console.error(`[scanner] error analizando ${repoPath}:`, err);

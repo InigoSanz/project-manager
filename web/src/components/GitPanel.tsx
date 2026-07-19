@@ -1,5 +1,69 @@
 import { useEffect, useState } from "react";
-import type { GitDetail, Project } from "@nebula/shared";
+import type { GitCommit, GitDetail, GitFileDiff, Project } from "@nebula/shared";
+import { useToasts } from "./Toast";
+import { Icon } from "./Icon";
+
+/** Visor de diff de un fichero: coloreado por tipo de línea. */
+function DiffViewer({ projectId, file, onClose }: { projectId: string; file: string; onClose: () => void }) {
+  const [diff, setDiff] = useState<GitFileDiff | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setDiff(null);
+    fetch(`/api/projects/${projectId}/git/diff?path=${encodeURIComponent(file)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d: GitFileDiff) => alive && setDiff(d))
+      .catch(() => alive && setDiff({ path: file, staged: false, binary: false, truncated: false, lines: [] }));
+    return () => {
+      alive = false;
+    };
+  }, [projectId, file]);
+
+  return (
+    <div className="mt-3 rounded-lg border border-white/10 bg-black/40">
+      <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+        <span className="truncate font-mono text-[10px] text-slate-300" title={file}>
+          {file}
+        </span>
+        <button onClick={onClose} className="shrink-0 text-slate-500 hover:text-white" title="Cerrar">
+          <Icon name="close" size={12} />
+        </button>
+      </div>
+      <div className="max-h-72 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed">
+        {!diff ? (
+          <p className="text-slate-600">Cargando diff…</p>
+        ) : diff.binary ? (
+          <p className="text-slate-500">Fichero binario: no hay nada que mostrar.</p>
+        ) : diff.lines.length === 0 ? (
+          <p className="text-slate-500">Sin cambios que mostrar.</p>
+        ) : (
+          <>
+            {diff.lines.map((l, i) => (
+              <div
+                key={i}
+                className={
+                  l.kind === "add"
+                    ? "bg-emerald-500/10 text-emerald-300"
+                    : l.kind === "del"
+                      ? "bg-rose-500/10 text-rose-300"
+                      : l.kind === "hunk"
+                        ? "mt-1 text-accent"
+                        : "text-slate-400"
+                }
+              >
+                <span className="select-none opacity-50">
+                  {l.kind === "add" ? "+" : l.kind === "del" ? "-" : " "}
+                </span>
+                {l.text}
+              </div>
+            ))}
+            {diff.truncated && <p className="mt-2 text-amber-300/80">— diff recortado por tamaño —</p>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Sparkline de commits (serie única → un solo tono, barras finas, hueco 2px). */
 function CommitSpark({ histogram }: { histogram: number[] }) {
@@ -53,6 +117,31 @@ const STATE_LABEL: Record<string, string> = {
 export function GitPanel({ project }: { project: Project }) {
   const [detail, setDetail] = useState<GitDetail | null>(null);
   const [error, setError] = useState(false);
+  const [openDiff, setOpenDiff] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [found, setFound] = useState<GitCommit[] | null>(null);
+  const push = useToasts((s) => s.push);
+
+  // búsqueda en el historial con debounce (git log --grep / -S)
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setFound(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      void fetch(`/api/projects/${project.id}/git/log?q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((c: GitCommit[]) => alive && setFound(c))
+        .catch(() => alive && setFound([]));
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [query, project.id]);
 
   useEffect(() => {
     let alive = true;
@@ -66,17 +155,59 @@ export function GitPanel({ project }: { project: Project }) {
     // re-fetch cuando el estado git del proyecto cambia (evento WS actualiza project.git)
   }, [project.id, project.git]);
 
+  /** Lanza fetch/pull/checkout y refresca el panel con el resultado. */
+  const gitAction = async (action: string, body?: Record<string, unknown>): Promise<void> => {
+    setBusy(action);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/git/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (res.ok) push({ level: "success", message: data.message || "Hecho." });
+      else push({ level: "error", message: data.error || "git falló." });
+      const fresh = await fetch(`/api/projects/${project.id}/git`);
+      if (fresh.ok) setDetail((await fresh.json()) as GitDetail);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (error) return <p className="p-4 text-sm text-rose-300">No se pudo leer el estado git.</p>;
   if (!detail) return <p className="p-4 text-sm text-slate-500">Cargando git…</p>;
 
   const { status, commits, branches, changes } = detail;
+  const shownCommits = found ?? commits;
 
   return (
     <div className="grid h-full grid-cols-1 gap-4 overflow-y-auto p-1 lg:grid-cols-3">
       {/* Columna 1: estado + cambios */}
       <div className="space-y-4">
         <section className="glass rounded-xl p-4">
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Estado</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Estado</h3>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => void gitAction("fetch")}
+                disabled={busy !== null}
+                title="Traer cambios del remoto sin aplicarlos"
+                className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[11px] text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              >
+                <Icon name="refresh" size={11} />
+                {busy === "fetch" ? "Trayendo…" : "Fetch"}
+              </button>
+              <button
+                onClick={() => void gitAction("pull")}
+                disabled={busy !== null}
+                title="Traer y aplicar (solo si avanza en línea recta)"
+                className="flex items-center gap-1 rounded-md bg-accent/20 px-2 py-1 text-[11px] text-indigo-200 transition-colors hover:bg-accent/35 disabled:opacity-40"
+              >
+                <Icon name="chevronDown" size={11} />
+                {busy === "pull" ? "Aplicando…" : "Pull"}
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-md bg-white/5 px-2 py-1 text-slate-200">⎇ {status.branch ?? "detached"}</span>
             {status.upstream && (
@@ -106,15 +237,23 @@ export function GitPanel({ project }: { project: Project }) {
           {changes.length > 0 && (
             <ul className="mt-3 max-h-44 space-y-1 overflow-y-auto text-xs">
               {changes.map((c) => (
-                <li key={c.path} className="flex items-center gap-2 text-slate-300">
-                  <span className="w-5 shrink-0 font-mono text-amber-400/90">{c.state}</span>
-                  <span className="truncate" title={`${STATE_LABEL[c.state] ?? c.state}: ${c.path}`}>
-                    {c.path}
-                  </span>
+                <li key={c.path}>
+                  {/* pulsar un fichero abre su diff */}
+                  <button
+                    onClick={() => setOpenDiff(openDiff === c.path ? null : c.path)}
+                    className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-white/5 ${
+                      openDiff === c.path ? "bg-white/5 text-white" : "text-slate-300"
+                    }`}
+                    title={`Ver cambios · ${STATE_LABEL[c.state] ?? c.state}: ${c.path}`}
+                  >
+                    <span className="w-5 shrink-0 font-mono text-amber-400/90">{c.state}</span>
+                    <span className="truncate">{c.path}</span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
+          {openDiff && <DiffViewer projectId={project.id} file={openDiff} onClose={() => setOpenDiff(null)} />}
         </section>
 
         <section className="glass rounded-xl p-4">
@@ -128,12 +267,20 @@ export function GitPanel({ project }: { project: Project }) {
           <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Ramas</h3>
           <ul className="max-h-48 space-y-1.5 overflow-y-auto">
             {branches.map((b) => (
-              <li key={b.name} className="flex items-center justify-between gap-2 text-xs">
-                <span className={`truncate ${b.isCurrent ? "font-semibold text-indigo-300" : "text-slate-300"}`}>
-                  {b.isCurrent && "● "}
-                  {b.name}
-                </span>
-                <span className="shrink-0 text-[10px] text-slate-500">{b.lastCommitAt?.slice(0, 10)}</span>
+              <li key={b.name}>
+                {/* pulsar una rama cambia a ella (git rechaza si hay conflicto) */}
+                <button
+                  onClick={() => !b.isCurrent && void gitAction("checkout", { branch: b.name })}
+                  disabled={b.isCurrent || busy !== null}
+                  title={b.isCurrent ? "Rama actual" : `Cambiar a ${b.name}`}
+                  className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left text-xs transition-colors enabled:hover:bg-white/5 disabled:cursor-default"
+                >
+                  <span className={`truncate ${b.isCurrent ? "font-semibold text-indigo-300" : "text-slate-300"}`}>
+                    {b.isCurrent && "● "}
+                    {b.name}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-slate-500">{b.lastCommitAt?.slice(0, 10)}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -142,9 +289,22 @@ export function GitPanel({ project }: { project: Project }) {
 
       {/* Columnas 2-3: historial */}
       <section className="glass rounded-xl p-4 lg:col-span-2">
-        <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Últimos commits</h3>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+            {query.trim() ? "Resultados" : "Últimos commits"}
+          </h3>
+          <div className="relative w-56">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar en el historial…"
+              className="w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pr-2 pl-7 text-xs text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-accent/60 focus:outline-none"
+            />
+            <Icon name="search" size={12} className="absolute top-2 left-2 text-slate-500" />
+          </div>
+        </div>
         <ul className="space-y-2 overflow-y-auto">
-          {commits.map((c) => (
+          {shownCommits.map((c) => (
             <li key={c.hash} className="flex items-start gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-white/5">
               <code className="mt-0.5 shrink-0 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-indigo-300">
                 {c.shortHash}
@@ -160,7 +320,11 @@ export function GitPanel({ project }: { project: Project }) {
               </div>
             </li>
           ))}
-          {commits.length === 0 && <li className="text-xs text-slate-500">Sin commits todavía.</li>}
+          {shownCommits.length === 0 && (
+            <li className="text-xs text-slate-500">
+              {query.trim() ? `Ningún commit coincide con «${query.trim()}».` : "Sin commits todavía."}
+            </li>
+          )}
         </ul>
       </section>
     </div>

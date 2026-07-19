@@ -84,6 +84,33 @@ export function GeneralSettings() {
         </SettingRow>
       </Section>
 
+      <Section title="Herramientas">
+        <SettingRow
+          title="Comando del editor"
+          description="El que se usa al pulsar «Editor». Por defecto VS Code («code»); por ejemplo «subl», «webstorm» o «cursor»."
+        >
+          <input
+            value={config.editorCommand ?? ""}
+            onChange={(e) => patch({ editorCommand: e.target.value })}
+            placeholder="code"
+            spellCheck={false}
+            className="w-40 rounded-lg border border-white/10 bg-black/30 p-2 font-mono text-xs text-slate-200 focus:outline-none"
+          />
+        </SettingRow>
+        <SettingRow
+          title="Navegador"
+          description="El que abre el repositorio remoto. Vacío = Google Chrome; si no está instalado, el predeterminado del sistema."
+        >
+          <input
+            value={config.browserCommand ?? ""}
+            onChange={(e) => patch({ browserCommand: e.target.value })}
+            placeholder="chrome"
+            spellCheck={false}
+            className="w-40 rounded-lg border border-white/10 bg-black/30 p-2 font-mono text-xs text-slate-200 focus:outline-none"
+          />
+        </SettingRow>
+      </Section>
+
       <FolderPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

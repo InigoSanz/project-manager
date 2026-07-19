@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { LanguageStat, ProjectAnalysis, ProjectMetrics, ProjectTraits } from "@nebula/shared";
+import type {
+  LanguageStat,
+  PackageInfo,
+  ProjectAnalysis,
+  ProjectHealth,
+  ProjectMetrics,
+  ProjectTraits,
+} from "@nebula/shared";
 import { EXT_TO_LANG, IGNORED_FILES } from "./languages.js";
 import { getCommitDates, getFirstLastCommit } from "../git/index.js";
 
@@ -52,6 +59,99 @@ function walk(repo: string, excludes: string[]): WalkResult {
 }
 
 /** Heurísticas de frameworks a partir de manifiestos. */
+/**
+ * Lee el package.json para lo que sirve *actuar*: los scripts lanzables y con
+ * qué gestor. El fichero ya se parseaba para detectar frameworks, pero todo
+ * esto se descartaba.
+ */
+function readPackageInfo(repo: string): PackageInfo | null {
+  let pkg: Record<string, unknown>;
+  try {
+    pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8")) as Record<string, unknown>;
+  } catch {
+    return null; // no es un proyecto Node
+  }
+  const lockfiles: Array<[string, PackageInfo["packageManager"]]> = [
+    ["pnpm-lock.yaml", "pnpm"],
+    ["yarn.lock", "yarn"],
+    ["bun.lockb", "bun"],
+    ["package-lock.json", "npm"],
+  ];
+  let packageManager: PackageInfo["packageManager"] = "npm";
+  for (const [file, manager] of lockfiles) {
+    if (fs.existsSync(path.join(repo, file))) {
+      packageManager = manager;
+      break;
+    }
+  }
+  // `packageManager: "pnpm@9"` del propio package.json manda sobre el lockfile
+  const declared = typeof pkg.packageManager === "string" ? pkg.packageManager.split("@")[0] : null;
+  if (declared === "pnpm" || declared === "npm" || declared === "yarn" || declared === "bun") {
+    packageManager = declared;
+  }
+
+  const scripts = typeof pkg.scripts === "object" && pkg.scripts ? Object.keys(pkg.scripts) : [];
+  const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+  return {
+    name: str(pkg.name),
+    version: str(pkg.version),
+    description: str(pkg.description),
+    scripts,
+    packageManager,
+    monorepo: Array.isArray(pkg.workspaces) || fs.existsSync(path.join(repo, "pnpm-workspace.yaml")),
+  };
+}
+
+/**
+ * Señales de salud del repo. Ojo: `walk` se salta los directorios que empiezan
+ * por punto, así que `.github` hay que mirarlo explícitamente aquí.
+ */
+function detectHealth(repo: string): ProjectHealth {
+  const firstExisting = (names: string[]): string | null =>
+    names.find((n) => fs.existsSync(path.join(repo, n))) ?? null;
+
+  const ci: string[] = [];
+  const workflows = path.join(repo, ".github", "workflows");
+  try {
+    for (const f of fs.readdirSync(workflows)) {
+      if (f.endsWith(".yml") || f.endsWith(".yaml")) ci.push(`.github/workflows/${f}`);
+    }
+  } catch {
+    /* sin workflows de GitHub */
+  }
+  for (const f of [".gitlab-ci.yml", "azure-pipelines.yml", "Jenkinsfile", ".circleci/config.yml"]) {
+    if (fs.existsSync(path.join(repo, f))) ci.push(f);
+  }
+
+  // el framework de tests se deduce de las dependencias o de su config
+  let tests: string | null = null;
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8")) as Record<string, unknown>;
+    const deps = { ...(pkg.dependencies as object), ...(pkg.devDependencies as object) } as Record<string, string>;
+    for (const t of ["vitest", "jest", "mocha", "playwright", "@playwright/test", "cypress", "ava"]) {
+      if (deps[t]) {
+        tests = t.replace("@playwright/test", "playwright");
+        break;
+      }
+    }
+  } catch {
+    /* sin package.json */
+  }
+  if (!tests) {
+    if (fs.existsSync(path.join(repo, "pytest.ini")) || fs.existsSync(path.join(repo, "tests"))) tests = "pytest";
+    else if (fs.existsSync(path.join(repo, "karma.conf.js"))) tests = "karma";
+  }
+
+  return {
+    readme: firstExisting(["README.md", "README.MD", "readme.md", "README", "README.txt"]),
+    license: firstExisting(["LICENSE", "LICENSE.md", "LICENCE", "COPYING"]),
+    ci,
+    tests,
+    envExample: fs.existsSync(path.join(repo, ".env.example")) || fs.existsSync(path.join(repo, ".env.sample")),
+    envLocal: fs.existsSync(path.join(repo, ".env")),
+  };
+}
+
 function detectFrameworks(repo: string): string[] {
   const found = new Set<string>();
   const pkgPath = path.join(repo, "package.json");
@@ -190,5 +290,12 @@ export async function analyzeProject(
   };
 
   const traits = computeTraits(name, repoPath, languages, frameworks, metrics, agentActivityScore);
-  return { languages, frameworks, metrics, traits };
+  return {
+    languages,
+    frameworks,
+    metrics,
+    traits,
+    pkg: readPackageInfo(repoPath),
+    health: detectHealth(repoPath),
+  };
 }

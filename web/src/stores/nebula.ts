@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, WsEvent, NebulaConfig } from "@nebula/shared";
+import type { Project, WsEvent, NebulaConfig, RunInfo, RunOutputChunk } from "@nebula/shared";
 import { useToasts } from "../components/Toast";
 
 interface NebulaState {
@@ -13,6 +13,10 @@ interface NebulaState {
   tasksVersion: Record<string, number>;
   /** nº de cosas accionables en Hoy (doing+todo+suggested+inbox) para el badge */
   todayCount: number;
+  /** ejecuciones de scripts, vivas y recién terminadas */
+  runs: RunInfo[];
+  /** salida acumulada por ejecución (últimas líneas) */
+  runOutput: Record<string, RunOutputChunk[]>;
   init: () => void;
   rescan: () => Promise<void>;
   loadConfig: () => Promise<void>;
@@ -30,12 +34,19 @@ export const useNebula = create<NebulaState>((set, get) => ({
   liveActivity: {},
   tasksVersion: {},
   todayCount: 0,
+  runs: [],
+  runOutput: {},
 
   init: () => {
     if (ws) return;
     void fetch("/api/projects")
       .then((r) => r.json())
       .then((projects: Project[]) => set({ projects }))
+      .catch(() => {});
+    // ejecuciones que ya estuvieran en marcha antes de abrir esta pestaña
+    void fetch("/api/runs")
+      .then((r) => r.json())
+      .then((runs: RunInfo[]) => set({ runs }))
       .catch(() => {});
     let todayTimer: ReturnType<typeof setTimeout> | null = null;
     void get().loadConfig();
@@ -98,6 +109,19 @@ export const useNebula = create<NebulaState>((set, get) => ({
             break;
           case "scan.state":
             set({ scanning: event.scanning });
+            break;
+          case "run.started":
+            set({ runs: [...s.runs.filter((r) => r.id !== event.run.id), event.run] });
+            break;
+          case "run.output": {
+            // se acumula acotado: la consola solo muestra las últimas líneas
+            const prev = s.runOutput[event.runId] ?? [];
+            const next = [...prev, ...event.chunks].slice(-500);
+            set({ runOutput: { ...s.runOutput, [event.runId]: next } });
+            break;
+          }
+          case "run.exited":
+            set({ runs: s.runs.map((r) => (r.id === event.run.id ? event.run : r)) });
             break;
         }
       };

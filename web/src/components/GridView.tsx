@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import type { Project } from "@nebula/shared";
 import { PixelPlanet } from "./PixelPlanet";
 import { Icon } from "./Icon";
+import { ProjectActions } from "./ProjectActions";
 import { useNebula } from "../stores/nebula";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
 import { zoneColor } from "../pixel/palette";
@@ -68,7 +69,7 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
           >
             <Link
               to={`/project/${p.id}`}
-              className="glass block rounded-2xl p-5 transition-all hover:border-white/25 hover:shadow-[0_0_30px_-8px_var(--color-glow)]"
+              className="glass group block rounded-2xl p-5 transition-all hover:border-white/25 hover:shadow-[0_0_30px_-8px_var(--color-glow)]"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -112,6 +113,8 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
                 <span>{p.analysis?.metrics.commitsLast30d ?? 0} commits/30d</span>
                 {p.tasks.open > 0 && <span className="text-sky-300">{p.tasks.open} tareas</span>}
               </div>
+              {/* acciones sobre la propia tarjeta, sin entrar al proyecto */}
+              <ProjectActions project={p} compact className="mt-3 opacity-60 transition-opacity group-hover:opacity-100" />
             </Link>
           </motion.div>
         ))}

@@ -7,11 +7,22 @@ import { TaskMetaBadges } from "./TaskMeta";
 import { QuickAddInput } from "./QuickAddInput";
 import { TaskDialog, type TaskDialogState } from "./TaskDialog";
 import { Icon, type IconName } from "./Icon";
+import { PullRequests } from "./PullRequests";
+
+/** Revisiones y PRs abiertas, solo si GitHub está conectado y hay algo. */
+function PullRequestsSection() {
+  return (
+    <Section title="Pull requests">
+      <PullRequests compact />
+    </Section>
+  );
+}
 
 const SOURCE_BADGE: Record<string, { label: string; icon: IconName; cls: string }> = {
   jira: { label: "Jira", icon: "jira", cls: "bg-sky-500/15 text-sky-300" },
   planner: { label: "Planner", icon: "planner", cls: "bg-blue-500/15 text-blue-300" },
   agent: { label: "IA", icon: "ai", cls: "bg-indigo-500/15 text-indigo-300" },
+  github: { label: "GitHub", icon: "github", cls: "bg-slate-500/20 text-slate-200" },
 };
 
 const AGENT_ICON: Record<string, IconName> = {
@@ -244,6 +255,8 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
                       </ul>
                     </Section>
                   )}
+
+                  <PullRequestsSection />
 
                   {data.live.length > 0 && (
                     <Section title="Agentes ahora" count={data.live.length}>

@@ -16,6 +16,10 @@ import { AgentsManager } from "./agents/manager.js";
 import { TaskStore } from "./tasks/store.js";
 import { JiraSync, suggestJiraKey, transitionToDone } from "./integrations/jira.js";
 import { lanUrls } from "./lan.js";
+import { allowedOrigins } from "./security.js";
+import { RunManager } from "./runs/manager.js";
+import { NotesStore } from "./notes/store.js";
+import { GitHubSync } from "./integrations/github.js";
 import { scheduleBackups } from "./backup.js";
 import { Notifier } from "./notify.js";
 import { PlannerSync } from "./integrations/planner.js";
@@ -83,6 +87,7 @@ async function main(): Promise<void> {
   const notifier = new Notifier(db, cfg.port);
   const jira = new JiraSync(db, store, () => loadConfig().integrations?.jira, notifyTasksChanged, notifier);
   const planner = new PlannerSync(db, store, () => loadConfig().integrations?.planner, notifyTasksChanged, notifier);
+  const github = new GitHubSync(db, store, () => loadConfig().integrations?.github, notifyTasksChanged);
 
   const agents = new AgentsManager(
     db,
@@ -99,11 +104,37 @@ async function main(): Promise<void> {
     notifier,
   );
 
+  const runs = new RunManager({
+    onStarted: (run) => hub.broadcast({ type: "run.started", run }),
+    onOutput: (runId, chunks) => hub.broadcast({ type: "run.output", runId, chunks }),
+    onExited: (run) => hub.broadcast({ type: "run.exited", run }),
+  });
+
+  // sin esto, apagar el daemon dejaría vivos los `pnpm dev` que hubiera lanzado
+  const shutdown = (): void => {
+    runs.stopAll();
+    process.exit(0);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
   const app = Fastify({ logger: { level: "warn" } });
-  await app.register(cors, { origin: true });
+  // lista explícita en vez de `origin: true`: sin esto cualquier web abierta en
+  // el navegador podría leer y escribir en el daemon (ver security.ts)
+  await app.register(cors, {
+    // sin cabeceras CORS para orígenes ajenos (el navegador bloquea la
+    // respuesta); el rechazo explícito con 403 lo hace el hook de routes.ts,
+    // así el error es limpio en vez de un 500 del plugin
+    origin: (origin, cb) => cb(null, !origin || allowedOrigins(loadConfig()).includes(origin)),
+  });
   await app.register(websocket);
 
-  app.get("/ws", { websocket: true }, (socket) => {
+  app.get("/ws", { websocket: true }, (socket, req) => {
+    const origin = req.headers.origin;
+    if (origin && !allowedOrigins(loadConfig()).includes(origin)) {
+      socket.close();
+      return;
+    }
     hub.add(socket);
     socket.send(JSON.stringify({ type: "projects.changed", projects: store.all() }));
   });
@@ -159,6 +190,9 @@ async function main(): Promise<void> {
     tasks,
     jira,
     planner,
+    runs,
+    notes: new NotesStore(db),
+    github,
     onTasksChanged: notifyTasksChanged,
     onTaskCompleted,
     getConfig: () => cfg,
@@ -230,6 +264,7 @@ async function main(): Promise<void> {
       await planner.restore();
       await jira.sync();
       await planner.sync();
+      await github.sync();
       notifier.dueTodayDigest(tasks.dueToday().length);
     });
 
@@ -244,6 +279,7 @@ async function main(): Promise<void> {
     lastSyncAt = Date.now();
     void jira.sync();
     void planner.sync();
+    void github.sync();
     notifier.dueTodayDigest(tasks.dueToday().length);
   }, 60_000).unref();
 

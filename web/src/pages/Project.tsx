@@ -1,10 +1,16 @@
 import { useMemo, useState } from "react";
+import type { Project } from "@nebula/shared";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { deriveDNA } from "../visuals/dna";
 import { PixelPlanet } from "../components/PixelPlanet";
 import { Icon } from "../components/Icon";
+import { ProjectActions } from "../components/ProjectActions";
+import { ScriptsPanel } from "../components/ScriptsPanel";
+import { ReadmePanel } from "../components/ReadmePanel";
+import { ScratchpadPanel } from "../components/ScratchpadPanel";
+import { PullRequests } from "../components/PullRequests";
 import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
 import { AgentTimeline } from "../components/AgentTimeline";
@@ -12,21 +18,28 @@ import { TaskBoard } from "../components/TaskBoard";
 import { KnowledgeGraphPanel } from "../components/KnowledgeGraphPanel";
 import { NotesPanel } from "../components/NotesPanel";
 
-type Tab = "git" | "agentes" | "tareas" | "grafo" | "notas";
+type Tab = "resumen" | "git" | "agentes" | "tareas" | "conocimiento";
 const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "resumen", label: "Resumen" },
   { id: "git", label: "Git" },
-  { id: "agentes", label: "Agentes" },
   { id: "tareas", label: "Tareas" },
-  { id: "grafo", label: "Grafo" },
-  { id: "notas", label: "Notas" },
+  { id: "agentes", label: "Agentes" },
+  { id: "conocimiento", label: "Conocimiento" },
 ];
 
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const { projects, liveActivity } = useNebula();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState<Tab>(TABS.some((t) => t.id === initialTab) ? (initialTab as Tab) : "git");
+  const [tab, setTabState] = useState<Tab>(
+    TABS.some((t) => t.id === initialTab) ? (initialTab as Tab) : "resumen",
+  );
+  // la pestaña activa vive en la URL: así se puede compartir y volver atrás
+  const setTab = (next: Tab): void => {
+    setTabState(next);
+    setSearchParams({ tab: next }, { replace: true });
+  };
   const touch = useIsTouch();
   const small = useIsSmallScreen();
   const project = projects.find((p) => p.id === id);
@@ -84,11 +97,15 @@ export function ProjectPage() {
               Hoy
             </button>
           </div>
-          {live && (
-            <span className="glass animate-pulse rounded-lg px-3 py-1.5 text-xs text-emerald-300">
-              ● agente trabajando
-            </span>
-          )}
+          <div className="pointer-events-auto flex items-center gap-2">
+            {live && (
+              <span className="glass animate-pulse rounded-lg px-3 py-1.5 text-xs text-emerald-300">
+                ● agente trabajando
+              </span>
+            )}
+            {/* la salida de Nebula hacia el trabajo real */}
+            <ProjectActions project={project} className="max-sm:hidden" />
+          </div>
         </div>
 
         <motion.div
@@ -156,13 +173,85 @@ export function ProjectPage() {
           ))}
         </nav>
         <div className="min-h-0 flex-1">
+          {tab === "resumen" && <SummaryTab project={project} />}
           {tab === "git" && <GitPanel project={project} />}
           {tab === "agentes" && <AgentTimeline project={project} />}
           {tab === "tareas" && <TaskBoard project={project} />}
-          {tab === "grafo" && <KnowledgeGraphPanel project={project} />}
-          {tab === "notas" && <NotesPanel project={project} />}
+          {tab === "conocimiento" && (
+            <div className="grid h-full grid-cols-1 gap-4 overflow-y-auto p-1 lg:grid-cols-2">
+              <div className="flex min-h-0 flex-col gap-4">
+                <ScratchpadPanel project={project} />
+                <NotesPanel project={project} />
+              </div>
+              <KnowledgeGraphPanel project={project} />
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Resumen: lo que necesitas saber y poder hacer nada más entrar. */
+function SummaryTab({ project }: { project: Project }) {
+  const pkg = project.analysis?.pkg;
+  const health = project.analysis?.health;
+  return (
+    <div className="grid h-full grid-cols-1 gap-4 overflow-y-auto p-1 lg:grid-cols-2">
+      <div className="space-y-4">
+        <section className="glass rounded-xl p-4">
+          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Abrir</h3>
+          <ProjectActions project={project} />
+        </section>
+        <ScriptsPanel project={project} />
+      </div>
+      <div className="space-y-4">
+        <section className="glass rounded-xl p-4">
+          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Ficha</h3>
+          <dl className="space-y-2 text-xs">
+            <Fact label="Ruta" value={project.path} mono />
+            {pkg?.version && <Fact label="Versión" value={pkg.version} />}
+            {pkg && <Fact label="Gestor" value={pkg.packageManager} />}
+            {pkg?.monorepo && <Fact label="Estructura" value="Monorepo con workspaces" />}
+            {project.remoteUrl && <Fact label="Remoto" value={project.remoteUrl} mono />}
+            {pkg?.description && <Fact label="Descripción" value={pkg.description} />}
+          </dl>
+          {health && (
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
+              <HealthChip ok={Boolean(health.readme)} label={health.readme ? "README" : "sin README"} />
+              <HealthChip ok={Boolean(health.license)} label={health.license ? "Licencia" : "sin licencia"} />
+              <HealthChip ok={health.ci.length > 0} label={health.ci.length > 0 ? `CI (${health.ci.length})` : "sin CI"} />
+              <HealthChip ok={Boolean(health.tests)} label={health.tests ?? "sin tests"} />
+              {health.envExample && <HealthChip ok label=".env.example" />}
+              {health.envLocal && <HealthChip ok label=".env local" />}
+            </div>
+          )}
+        </section>
+        <PullRequests projectId={project.id} />
+        <ReadmePanel project={project} />
+      </div>
+    </div>
+  );
+}
+
+/** Señal de salud: verde si está, apagada si falta (nunca alarmista). */
+function HealthChip({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={`rounded-md px-2 py-0.5 text-[10px] ${
+        ok ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-slate-500"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="w-24 shrink-0 text-slate-500">{label}</dt>
+      <dd className={`min-w-0 flex-1 break-all text-slate-200 ${mono ? "font-mono text-[11px]" : ""}`}>{value}</dd>
     </div>
   );
 }

@@ -34,6 +34,8 @@ export type IconName =
   | "external"
   | "jira"
   | "planner"
+  | "github"
+  | "pullRequest"
   | "ai"
   | "branch"
   | "dot"
@@ -41,6 +43,9 @@ export type IconName =
   | "priority"
   | "qr"
   | "terminal"
+  | "editor"
+  | "play"
+  | "stop"
   | "cube"
   | "star"
   | "orbit"
@@ -153,6 +158,19 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   jira: <path d="M8 1.6 14.4 8 8 14.4 1.6 8Z" />,
+  github: (
+    <path d="M6.2 13.8v-2.1c0-.6-.2-1-.5-1.3 2-.2 3.9-.9 3.9-4a2.9 2.9 0 0 0-.8-2 2.7 2.7 0 0 0-.1-2s-.7-.2-2.1.8a7.4 7.4 0 0 0-3.6 0C1.6 2.2.9 2.4.9 2.4a2.7 2.7 0 0 0-.1 2 2.9 2.9 0 0 0-.8 2c0 3.1 1.9 3.8 3.9 4-.3.3-.5.7-.5 1.3v2.1" transform="translate(3.2 0.2) scale(0.78)" />
+  ),
+  // rama con un círculo: la forma universal de "pull request"
+  pullRequest: (
+    <>
+      <circle cx="4.4" cy="3.6" r="1.7" />
+      <circle cx="4.4" cy="12.4" r="1.7" />
+      <circle cx="11.6" cy="12.4" r="1.7" />
+      <path d="M4.4 5.3v5.4M11.6 10.7V6.4a1.6 1.6 0 0 0-1.6-1.6H7.6" />
+      <path d="m9.2 3.2-1.6 1.6 1.6 1.6" />
+    </>
+  ),
   planner: (
     <>
       <rect x="2.2" y="2.8" width="11.6" height="10.4" rx="1.4" />
@@ -195,6 +213,10 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m4.8 6.4 2 1.8-2 1.8M8.6 10.4h3" />
     </>
   ),
+  // corchetes de código: reconocible como "abrir en el editor"
+  editor: <path d="m5.6 4.4-4 3.6 4 3.6M10.4 4.4l4 3.6-4 3.6" />,
+  play: <path d="M4.6 2.8 13 8l-8.4 5.2Z" />,
+  stop: <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.2" />,
   cube: (
     <>
       <path d="M8 1.8 14 5v6l-6 3.2L2 11V5Z" />
