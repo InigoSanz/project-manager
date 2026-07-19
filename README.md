@@ -1,6 +1,6 @@
 # 🌌 Nebula
 
-> Gestor visual **local** de proyectos y repositorios que convierte tu actividad de desarrollo en un mapa espacial pixel-art interactivo.
+> Centro de control **local** para tus proyectos: convierte tu actividad de desarrollo en un mapa espacial pixel-art interactivo desde el que además puedes trabajar.
 
 Nebula detecta automáticamente los repositorios Git de tu máquina y representa cada proyecto como un planeta pixel-art procedural generado a partir de su ADN: lenguajes, tamaño, complejidad y actividad reciente. Cada carpeta raíz que configures es una zona del mapa con su propia nebulosa.
 
@@ -38,11 +38,20 @@ Nebula detecta automáticamente los repositorios Git de tu máquina y representa
 - **Git en tiempo real**: muestra rama actual, estado del working tree, ahead/behind, ramas, últimos commits y actividad reciente, actualizado mediante WebSocket.
 - **Agentes de IA**: unifica las sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto.
 - **Detección de sesiones activas**: el planeta de un proyecto late y suelta partículas mientras un agente está trabajando.
+- **Abrir donde trabajas**: un click abre el proyecto en tu editor, en una terminal, en el explorador de archivos o el repositorio remoto en el navegador.
+- **Ejecutar scripts**: lanza cualquier script del `package.json` desde la propia app, con la salida en vivo y detección automática de la URL del servidor de desarrollo.
+- **Git accionable**: diff de cada fichero modificado, cambio de rama, `fetch`, `pull` y búsqueda en el historial.
+- **Contexto del proyecto**: README renderizado, versión, gestor de paquetes, detección de CI/tests/licencia y comprobación de dependencias desactualizadas.
+- **Bloc de notas por proyecto**: tus propias notas, guardadas en Nebula.
+- **Filtros y favoritos**: filtra el mapa por tecnología, estado de git o actividad, y fija los proyectos que más usas.
+- **Vista de todas las tareas**: `/tareas` reúne las de todos los orígenes con filtros por proyecto, estado, origen y vencimiento.
+- **Resumen global**: qué repos tienen cambios sin commitear, cuáles van por detrás del remoto y el reparto de lenguajes de todo tu código.
 - **Vista Hoy**: reúne tareas, avisos Git y agentes activos de todos los proyectos.
 - **Creación rápida de tareas**: permite añadir tareas desde la vista Hoy utilizando `@proyecto`.
 - **Kanban por proyecto**: organiza tareas manuales, sugeridas por agentes y sincronizadas desde servicios externos.
 - **Integración con Jira**: importa issues asignados al usuario y permite cerrarlos desde Nebula mediante write-back.
 - **Integración con Microsoft Planner**: sincroniza tareas de Planner mediante autenticación delegada de Microsoft 365.
+- **Integración con GitHub**: trae tus pull requests, las revisiones que te han pedido y los issues asignados, emparejados con cada repo por la URL de su remoto.
 - **Control de sincronización**: permite desactivar la escritura hacia Jira o Planner y utilizar las integraciones en modo de solo lectura.
 - **Grafo de conocimiento**: renderiza en 3D la salida de [Graphify](https://github.com/safishamsi/graphify) cuando existe `graphify-out/graph.json`.
 - **Integración con Obsidian**: encuentra notas relacionadas con cada proyecto y las abre mediante `obsidian://`.
@@ -237,9 +246,11 @@ Nebula busca notas relacionadas con cada proyecto en los vaults detectados y las
 | Atajo | Acción |
 |---|---|
 | `Ctrl+K` | Abrir la command palette |
+| `N` | Crear una tarea |
 | `T` | Abrir la vista Hoy |
 | `?` | Abrir la ayuda |
-| `@proyecto` | Asociar una tarea rápida a un proyecto |
+| `Esc` | Cerrar el panel o modal activo |
+| `@proyecto` `!alta` `^viernes` | Atajos al escribir el título de una tarea |
 
 ## Stack tecnológico
 
@@ -296,11 +307,16 @@ Nebula está diseñado para funcionar localmente.
 
 - Por defecto, el servidor escucha únicamente en `127.0.0.1`.
 - El acceso LAN está desactivado inicialmente.
-- Las credenciales de Jira se almacenan localmente en `~/.nebula/config.json`.
+- **Comprobación de origen**: solo se atienden peticiones cuyo `Origin` sea el de la propia aplicación, de modo que una página web abierta en tu navegador no puede hablar con el daemon.
+- **Las acciones que ejecutan algo** (abrir el editor, lanzar scripts, `fetch`/`pull`/`checkout`, explorar carpetas) **solo se permiten desde el propio equipo**. Desde el móvil ves toda la información, pero no puedes lanzar nada.
+- Los scripts ejecutables se validan contra los nombres reales del `package.json`: nunca se ejecuta texto libre.
+- Al apagar el daemon se cierran los procesos que hubiera lanzado, incluida su descendencia.
+- Las credenciales de Jira y GitHub se almacenan localmente en `~/.nebula/config.json` y la API nunca las devuelve en claro.
 - Los tokens de Microsoft se almacenan en `~/.nebula/msal-cache.json`.
 - No debes subir el contenido de `~/.nebula/` a un repositorio.
 - El write-back de Jira y Planner puede desactivarse.
 - Nebula solo realiza conexiones externas hacia los servicios que configures y hacia los remotos Git cuando habilitas operaciones como `fetch`.
+- La comprobación de dependencias desactualizadas consulta el registry de npm, y solo cuando la pides a mano.
 
 > [!CAUTION]
 > Las credenciales de Jira se guardan en texto plano en el equipo local. Protege tu cuenta de usuario, no compartas el archivo de configuración y revoca cualquier token expuesto.

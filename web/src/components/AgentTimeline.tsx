@@ -42,9 +42,11 @@ export function AgentTimeline({ project }: { project: Project }) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center text-sm text-slate-500">
-          <p className="text-3xl">🤖</p>
+          <Icon name="ai" size={30} className="mx-auto text-slate-600" />
           <p className="mt-2">Sin sesiones de agentes en este proyecto.</p>
-          <p className="mt-1 text-xs">Se detectan automáticamente: Claude Code, Codex CLI y Cursor.</p>
+          <p className="mt-1 text-xs">
+            Se detectan automáticamente: Claude Code, Codex CLI, Cursor, Gemini CLI y Antigravity.
+          </p>
         </div>
       </div>
     );

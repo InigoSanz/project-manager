@@ -69,6 +69,8 @@ function migrate(db: Database.Database): void {
   if (!cols.includes("jira_key")) db.exec(`ALTER TABLE projects ADD COLUMN jira_key TEXT`);
   if (!cols.includes("jira_key_suggestion")) db.exec(`ALTER TABLE projects ADD COLUMN jira_key_suggestion TEXT`);
   if (!cols.includes("remote_url")) db.exec(`ALTER TABLE projects ADD COLUMN remote_url TEXT`);
+  if (!cols.includes("favorite")) db.exec(`ALTER TABLE projects ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`);
+  if (!cols.includes("archived")) db.exec(`ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
 
   const taskCols = (db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>).map((c) => c.name);
   if (!taskCols.includes("external_meta")) db.exec(`ALTER TABLE tasks ADD COLUMN external_meta TEXT`);

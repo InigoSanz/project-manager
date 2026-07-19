@@ -37,6 +37,20 @@ export interface PackageInfo {
   monorepo: boolean;
 }
 
+export interface OutdatedDep {
+  name: string;
+  current: string | null;
+  wanted: string | null;
+  latest: string | null;
+  /** el salto es de versión mayor: puede romper */
+  major: boolean;
+}
+
+export interface OutdatedReport {
+  generatedAt: string;
+  deps: OutdatedDep[];
+}
+
 /** Señales de salud del repo: lo que un desarrollador mira al llegar nuevo. */
 export interface ProjectHealth {
   /** nombre del fichero README encontrado, o null */
@@ -152,6 +166,10 @@ export interface Project {
   jiraKeySuggestion: string | null;
   /** URL del remoto `origin` tal cual la reporta git (puede ser SSH) */
   remoteUrl: string | null;
+  /** fijado por el usuario: sale primero y se puede filtrar */
+  favorite: boolean;
+  /** archivado: se oculta del mapa y la cuadrícula salvo que se pidan */
+  archived: boolean;
 }
 
 // ---------- Agentes ----------

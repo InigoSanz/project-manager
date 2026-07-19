@@ -11,6 +11,8 @@ import { ScriptsPanel } from "../components/ScriptsPanel";
 import { ReadmePanel } from "../components/ReadmePanel";
 import { ScratchpadPanel } from "../components/ScratchpadPanel";
 import { PullRequests } from "../components/PullRequests";
+import { FavoriteButton } from "../components/FavoriteButton";
+import { OutdatedPanel } from "../components/OutdatedPanel";
 import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
 import { AgentTimeline } from "../components/AgentTimeline";
@@ -113,7 +115,10 @@ export function ProjectPage() {
           animate={{ opacity: 1, y: 0 }}
           className="pointer-events-none absolute bottom-4 left-6 max-sm:right-4 max-sm:bottom-2 max-sm:left-4"
         >
-          <h1 className="font-display text-3xl font-bold text-white drop-shadow-lg max-sm:text-xl">{project.name}</h1>
+          <h1 className="pointer-events-auto flex items-center gap-2 font-display text-3xl font-bold text-white drop-shadow-lg max-sm:text-xl">
+            {project.name}
+            <FavoriteButton project={project} size={18} />
+          </h1>
           <p className="mt-1 truncate text-xs text-slate-400">{project.path}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {project.git?.branch && (
@@ -204,6 +209,7 @@ function SummaryTab({ project }: { project: Project }) {
           <ProjectActions project={project} />
         </section>
         <ScriptsPanel project={project} />
+        <OutdatedPanel project={project} />
       </div>
       <div className="space-y-4">
         <section className="glass rounded-xl p-4">

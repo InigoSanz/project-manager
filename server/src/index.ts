@@ -194,6 +194,7 @@ async function main(): Promise<void> {
     notes: new NotesStore(db),
     github,
     onTasksChanged: notifyTasksChanged,
+    onProjectUpdated: (project) => hub.broadcast({ type: "project.updated", project }),
     onTaskCompleted,
     getConfig: () => cfg,
     setConfig: (next) => {

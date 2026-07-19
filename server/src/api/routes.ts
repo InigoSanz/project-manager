@@ -24,6 +24,7 @@ import { suggestJiraKey } from "../integrations/jira.js";
 import { lanUrls } from "../lan.js";
 import { checkOrigin, MASKED_TOKEN, redactConfig, requireLoopback, sanitizeConfigPatch } from "../security.js";
 import { openProject, remoteToBrowserUrl, type OpenTarget } from "../actions/open.js";
+import { cachedReport, outdatedReport } from "../actions/outdated.js";
 import type { RunManager } from "../runs/manager.js";
 import type { NotesStore } from "../notes/store.js";
 import type { GitHubSync } from "../integrations/github.js";
@@ -41,6 +42,8 @@ export interface ApiDeps {
   getConfig: () => NebulaConfig;
   setConfig: (cfg: NebulaConfig) => void;
   onTasksChanged: (projectId: string) => void;
+  /** avisa a los clientes de que un proyecto cambió (favorito, archivado…) */
+  onProjectUpdated: (project: import("@nebula/shared").Project) => void;
   /** dispara el write-back asíncrono a Jira/Planner al completar una tarea */
   onTaskCompleted: (task: import("@nebula/shared").TaskItem) => void;
 }
@@ -152,6 +155,23 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       return result;
     },
   );
+
+  // Dependencias desactualizadas: consulta el registry, así que va bajo
+  // demanda (POST para lanzarlo, GET para leer lo ya calculado).
+  app.get<{ Params: { id: string } }>("/api/projects/:id/outdated", async (req, reply) => {
+    const report = cachedReport(req.params.id);
+    if (!report) return reply.code(204).send();
+    return report;
+  });
+
+  app.post<{ Params: { id: string } }>("/api/projects/:id/outdated", async (req, reply) => {
+    if (!requireLoopback(req, reply)) return reply;
+    const project = store.get(req.params.id);
+    if (!project || !project.present) return reply.code(404).send({ error: "not found" });
+    const pkg = project.analysis?.pkg;
+    if (!pkg) return reply.code(409).send({ error: "Este proyecto no tiene package.json." });
+    return outdatedReport(project.id, project.path, pkg.packageManager, true);
+  });
 
   // README del repo, para leerlo sin salir de Nebula
   app.get<{ Params: { id: string } }>("/api/projects/:id/readme", async (req, reply) => {
@@ -310,20 +330,25 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     return deps.jira.status;
   });
 
-  app.patch<{ Params: { id: string }; Body: { jiraKey?: string | null } }>(
-    "/api/projects/:id",
-    async (req, reply) => {
-      const project = store.get(req.params.id);
-      if (!project) return reply.code(404).send({ error: "not found" });
-      if (req.body && "jiraKey" in req.body) {
-        const key = req.body.jiraKey?.trim().toUpperCase() || null;
-        store.setJiraKey(req.params.id, key);
-        store.setJiraKeySuggestion(req.params.id, null);
-        void deps.jira.sync();
-      }
-      return store.get(req.params.id);
-    },
-  );
+  app.patch<{
+    Params: { id: string };
+    Body: { jiraKey?: string | null; favorite?: boolean; archived?: boolean };
+  }>("/api/projects/:id", async (req, reply) => {
+    const project = store.get(req.params.id);
+    if (!project) return reply.code(404).send({ error: "not found" });
+    if (req.body && "jiraKey" in req.body) {
+      const key = req.body.jiraKey?.trim().toUpperCase() || null;
+      store.setJiraKey(req.params.id, key);
+      store.setJiraKeySuggestion(req.params.id, null);
+      void deps.jira.sync();
+    }
+    if (typeof req.body?.favorite === "boolean" || typeof req.body?.archived === "boolean") {
+      store.setFlags(req.params.id, { favorite: req.body.favorite, archived: req.body.archived });
+    }
+    const updated = store.get(req.params.id);
+    if (updated) deps.onProjectUpdated(updated);
+    return updated;
+  });
 
   app.post<{ Params: { id: string } }>("/api/projects/:id/jira-suggest", async (req, reply) => {
     const project = store.get(req.params.id);
@@ -371,6 +396,38 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       return task;
     },
   );
+
+  // Todas las tareas con filtros: la vista transversal que faltaba.
+  app.get<{
+    Querystring: {
+      status?: string;
+      projectId?: string;
+      source?: string;
+      priority?: string;
+      due?: string;
+      q?: string;
+      limit?: string;
+      offset?: string;
+    };
+  }>("/api/tasks", async (req) => {
+    const q = req.query;
+    const result = deps.tasks.query({
+      status: q.status ? (q.status.split(",") as TaskStatus[]) : undefined,
+      projectId: q.projectId,
+      source: q.source,
+      priority: q.priority ? Number(q.priority) : undefined,
+      due: q.due,
+      q: q.q,
+      limit: Math.min(Number(q.limit) || 100, 300),
+      offset: Number(q.offset) || 0,
+    });
+    // el nombre del proyecto se resuelve aquí para no pedirlo por cada fila
+    const names = new Map(store.all().map((p) => [p.id, p.name]));
+    return {
+      total: result.total,
+      items: result.items.map((t) => ({ ...t, projectName: names.get(t.projectId) ?? null })),
+    };
+  });
 
   app.get<{ Querystring: { q?: string } }>("/api/search/tasks", async (req) => {
     const q = req.query.q?.trim() ?? "";

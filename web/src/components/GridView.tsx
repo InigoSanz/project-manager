@@ -5,6 +5,7 @@ import type { Project } from "@nebula/shared";
 import { PixelPlanet } from "./PixelPlanet";
 import { Icon } from "./Icon";
 import { ProjectActions } from "./ProjectActions";
+import { FavoriteButton } from "./FavoriteButton";
 import { useNebula } from "../stores/nebula";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
 import { zoneColor } from "../pixel/palette";
@@ -75,6 +76,7 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <PixelPlanet project={p} size={34} animate={false} className="shrink-0" />
                   <h3 className="truncate font-semibold text-white">{p.name}</h3>
+                  <FavoriteButton project={p} size={13} />
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {p.git && (p.git.behind > 0 || p.git.conflicted > 0) && (

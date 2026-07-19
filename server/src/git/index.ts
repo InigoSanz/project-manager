@@ -26,6 +26,11 @@ async function git(repo: string, args: string[], timeoutMs = 20_000): Promise<st
   return stdout;
 }
 
+/** Ejecuta git en un repo y devuelve stdout. Para usos fuera de este módulo. */
+export function gitRaw(repo: string, args: string[]): Promise<string> {
+  return git(repo, args);
+}
+
 export async function getStatus(repo: string): Promise<GitStatusSummary> {
   const out = await git(repo, ["status", "--porcelain=v2", "--branch"]);
   const s: GitStatusSummary = {

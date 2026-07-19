@@ -19,6 +19,8 @@ interface ProjectRow {
   jira_key: string | null;
   jira_key_suggestion: string | null;
   remote_url: string | null;
+  favorite: number;
+  archived: number;
 }
 
 export class ProjectStore {
@@ -93,7 +95,32 @@ export class ProjectStore {
       jiraKey: row.jira_key,
       jiraKeySuggestion: row.jira_key_suggestion,
       remoteUrl: row.remote_url,
+      favorite: row.favorite === 1,
+      archived: row.archived === 1,
     };
+  }
+
+  /**
+   * Actividad de agentes de los últimos 30 días, normalizada a 0..1. Alimenta
+   * el 30% de la "energía" del planeta, que hasta ahora estaba siempre a cero
+   * porque el escáner no llegaba a pasar este dato.
+   */
+  agentActivityScore(id: string): number {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS n FROM agent_sessions WHERE project_id = ? AND started_at >= ?`)
+      .get(id, since) as { n: number };
+    return Math.min(1, row.n / 10);
+  }
+
+  /** Marcas del usuario sobre el proyecto (fijar arriba, ocultar del mapa). */
+  setFlags(id: string, flags: { favorite?: boolean; archived?: boolean }): void {
+    if (flags.favorite !== undefined) {
+      this.db.prepare(`UPDATE projects SET favorite = ? WHERE id = ?`).run(flags.favorite ? 1 : 0, id);
+    }
+    if (flags.archived !== undefined) {
+      this.db.prepare(`UPDATE projects SET archived = ? WHERE id = ?`).run(flags.archived ? 1 : 0, id);
+    }
   }
 
   setJiraKey(id: string, jiraKey: string | null): void {

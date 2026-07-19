@@ -107,6 +107,7 @@ export function CommandPalette({ onOpenSettings }: { onOpenSettings: () => void 
         ]),
       { id: "today", label: "Abrir Hoy", hint: "tecla T", run: close(() => window.dispatchEvent(new Event("nebula:open-today"))) },
       { id: "home", label: "Ir al mapa", hint: "inicio", run: close(() => navigate("/")) },
+      { id: "tasks", label: "Ver todas las tareas", hint: "navegación", run: close(() => navigate("/tareas")) },
       { id: "rescan", label: "Re-escanear proyectos", hint: "acción", run: close(() => void rescan()) },
       { id: "settings", label: "Ajustes", hint: "configuración", run: close(onOpenSettings) },
     ];

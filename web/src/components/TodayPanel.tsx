@@ -172,6 +172,16 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
     if (open) void refresh();
   }, [open, tasksVersion]);
 
+  // el tooltip del botón ya prometía «Esc», pero no estaba implementado
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open && (

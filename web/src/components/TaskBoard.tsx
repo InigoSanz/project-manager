@@ -51,12 +51,13 @@ function ExternalBadge({ task }: { task: TaskItem }) {
   if (task.source === "planner") {
     return (
       <a
-        href="https://tasks.office.com"
+        // enlace profundo a la tarea concreta cuando sabemos su id
+        href={task.sourceRef ? `https://tasks.office.com/Home/Task/${task.sourceRef}` : "https://tasks.office.com"}
         target="_blank"
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
         className="mt-2 inline-block rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] text-blue-300 hover:bg-blue-500/25"
-        title="Abrir Planner"
+        title="Abrir en Planner"
       >
         ▦ Planner ↗
       </a>

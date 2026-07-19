@@ -1,11 +1,9 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { JiraConfig, JiraStatus } from "@nebula/shared";
 import type { DB } from "../db/index.js";
 import type { ProjectStore } from "../projects/store.js";
 import type { Notifier } from "../notify.js";
+import { gitRaw } from "../git/index.js";
 
-const run = promisify(execFile);
 const ISSUE_KEY_RE = /\b([A-Z][A-Z0-9]{1,9})-\d+\b/g;
 
 interface JiraIssue {
@@ -201,17 +199,14 @@ export async function suggestJiraKey(repoPath: string): Promise<string | null> {
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
   };
+  // se reutiliza el helper de git/: trae timeout y maxBuffer, que aquí faltaban
   try {
-    const { stdout: branches } = await run("git", ["-C", repoPath, "for-each-ref", "--format=%(refname:short)"], {
-      windowsHide: true,
-    });
-    feed(branches);
+    feed(await gitRaw(repoPath, ["for-each-ref", "--format=%(refname:short)"]));
   } catch {
     /* sin refs */
   }
   try {
-    const { stdout: log } = await run("git", ["-C", repoPath, "log", "--format=%s", "-50"], { windowsHide: true });
-    feed(log);
+    feed(await gitRaw(repoPath, ["log", "--format=%s", "-50"]));
   } catch {
     /* sin commits */
   }

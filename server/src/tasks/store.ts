@@ -56,6 +56,72 @@ export class TaskStore {
     return rows.map(toTask);
   }
 
+  /**
+   * Listado transversal con filtros, para la vista «Todas las tareas».
+   * Es lo que faltaba: hasta ahora solo existían los subconjuntos recortados
+   * de Hoy y una búsqueda limitada a 15 resultados.
+   */
+  query(opts: {
+    status?: TaskStatus[];
+    projectId?: string;
+    source?: string;
+    priority?: number;
+    /** "overdue" | "today" | "week" | "none" */
+    due?: string;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  }): { items: TaskItem[]; total: number } {
+    const where: string[] = [];
+    const params: Record<string, unknown> = {};
+
+    if (opts.status?.length) {
+      where.push(`status IN (${opts.status.map((_, i) => `@st${i}`).join(",")})`);
+      opts.status.forEach((s, i) => (params[`st${i}`] = s));
+    } else {
+      where.push(`status != 'dismissed'`);
+    }
+    if (opts.projectId) {
+      where.push(`project_id = @projectId`);
+      params.projectId = opts.projectId;
+    }
+    if (opts.source) {
+      where.push(`source = @source`);
+      params.source = opts.source;
+    }
+    if (opts.priority !== undefined) {
+      where.push(`priority = @priority`);
+      params.priority = opts.priority;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (opts.due === "overdue") {
+      where.push(`due_date IS NOT NULL AND due_date < @today`);
+      params.today = today;
+    } else if (opts.due === "today") {
+      where.push(`due_date = @today`);
+      params.today = today;
+    } else if (opts.due === "week") {
+      const week = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+      where.push(`due_date IS NOT NULL AND due_date <= @week`);
+      params.week = week;
+    } else if (opts.due === "none") {
+      where.push(`due_date IS NULL`);
+    }
+    if (opts.q?.trim()) {
+      where.push(`(title LIKE @q OR notes LIKE @q)`);
+      params.q = `%${opts.q.trim()}%`;
+    }
+
+    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const total = (
+      this.db.prepare(`SELECT COUNT(*) AS n FROM tasks ${clause}`).get(params) as { n: number }
+    ).n;
+    const rows = this.db
+      .prepare(`SELECT * FROM tasks ${clause} ORDER BY ${USEFUL_ORDER} LIMIT @limit OFFSET @offset`)
+      .all({ ...params, limit: opts.limit ?? 100, offset: opts.offset ?? 0 }) as TaskRow[];
+    return { items: rows.map(toTask), total };
+  }
+
   /** Búsqueda para la palette: título y notas, sin descartadas. */
   search(q: string, limit = 15): TaskItem[] {
     const like = `%${q.replace(/[%_]/g, "")}%`;

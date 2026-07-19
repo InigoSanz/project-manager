@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { PixelMap } from "../components/PixelMap";
@@ -7,12 +8,22 @@ import { FolderPicker } from "../components/FolderPicker";
 import { zoneColor } from "../pixel/palette";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
 import { Icon } from "../components/Icon";
+import { applyFilters, EMPTY_FILTERS, ProjectFilters, type Filters } from "../components/ProjectFilters";
 
 export function Home() {
   const { projects, scanning, connected, rescan, saveConfig, config, loadConfig, todayCount } = useNebula();
-  const [view, setView] = useState<"map" | "grid">("map");
+  // la vista elegida se recuerda entre visitas
+  const [view, setView] = useState<"map" | "grid">(
+    () => (localStorage.getItem("nebula:view") as "map" | "grid") ?? "map",
+  );
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const present = useMemo(() => projects.filter((p) => p.present), [projects]);
+
+  useEffect(() => {
+    localStorage.setItem("nebula:view", view);
+  }, [view]);
+  const allPresent = useMemo(() => projects.filter((p) => p.present), [projects]);
+  const present = useMemo(() => applyFilters(allPresent, filters), [allPresent, filters]);
   const zones = useMemo(() => {
     const roots = config?.roots ?? [];
     return [...groupProjectsByRoot(present, roots).entries()].map(([root, list]) => ({
@@ -42,7 +53,9 @@ export function Home() {
             NEBULA<span className="text-accent">.</span>
           </h1>
           <span className="text-xs text-slate-400">
-            {present.length} proyectos
+            {present.length === allPresent.length
+              ? `${present.length} proyectos`
+              : `${present.length} de ${allPresent.length}`}
             {scanning && <span className="ml-2 animate-pulse text-indigo-300">escaneando…</span>}
           </span>
           <span
@@ -51,9 +64,12 @@ export function Home() {
           />
         </div>
 
-        {/* Chips de zona: enfocar cada carpeta raíz en el mapa */}
-        {view === "map" && zones.length > 1 && (
-          <div className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 max-sm:hidden">
+        {/* Segunda fila: filtros y zonas, los dos controles del mapa juntos */}
+        <div className="pointer-events-none absolute top-16 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 max-sm:hidden">
+          <ProjectFilters projects={allPresent} filters={filters} onChange={setFilters} />
+
+          {view === "map" && zones.length > 1 && (
+            <div className="pointer-events-auto flex items-center gap-1.5">
             {zones.map((z) => (
               <button
                 key={z.root}
@@ -74,8 +90,9 @@ export function Home() {
               <Icon name="map" size={12} />
               Todo
             </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         {/* Acciones: arriba en desktop, barra inferior en móvil */}
         {/* en móvil el contenedor ocupa todo el ancho: solo los botones capturan puntero */}
         <div className="pointer-events-auto flex items-center gap-2 max-sm:pointer-events-none max-sm:fixed max-sm:inset-x-2 max-sm:bottom-0 max-sm:z-20 max-sm:justify-center max-sm:gap-1.5 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:[&>*]:pointer-events-auto">
@@ -87,6 +104,14 @@ export function Home() {
             <Icon name="plus" size={15} />
             <span className="max-sm:hidden">Nueva tarea</span>
           </button>
+          <Link
+            to="/tareas"
+            className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white max-sm:hidden"
+            title="Todas las tareas, de todos los orígenes"
+          >
+            <Icon name="check" size={13} />
+            Tareas
+          </Link>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-today"))}
             className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-200 transition-colors hover:text-white max-sm:px-3.5 max-sm:py-2.5"
@@ -109,6 +134,13 @@ export function Home() {
           >
             <Icon name="refresh" size={13} />
             Re-escanear
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new Event("nebula:open-stats"))}
+            className="glass rounded-lg px-3 py-2 text-slate-300 transition-colors hover:text-white max-sm:hidden"
+            title="Resumen global de todos tus proyectos"
+          >
+            <Icon name="chart" size={14} />
           </button>
           <button
             onClick={() => window.dispatchEvent(new Event("nebula:open-help"))}

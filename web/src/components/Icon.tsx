@@ -46,6 +46,7 @@ export type IconName =
   | "editor"
   | "play"
   | "stop"
+  | "chart"
   | "cube"
   | "star"
   | "orbit"
@@ -217,6 +218,7 @@ const PATHS: Record<IconName, ReactNode> = {
   editor: <path d="m5.6 4.4-4 3.6 4 3.6M10.4 4.4l4 3.6-4 3.6" />,
   play: <path d="M4.6 2.8 13 8l-8.4 5.2Z" />,
   stop: <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.2" />,
+  chart: <path d="M2.4 13.6V9.2M6.4 13.6V4.4M10.4 13.6v-6.4M14 13.6V2.4" />,
   cube: (
     <>
       <path d="M8 1.8 14 5v6l-6 3.2L2 11V5Z" />

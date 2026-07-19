@@ -85,7 +85,7 @@ export class Scanner {
     this.analyzing.add(id);
     try {
       const [analysis, git, remoteUrl] = await Promise.all([
-        analyzeProject(repoPath, this.cfg.excludes),
+        analyzeProject(repoPath, this.cfg.excludes, this.store.agentActivityScore(id)),
         getStatus(repoPath).catch(() => null),
         getRemoteUrl(repoPath).catch(() => null),
       ]);
