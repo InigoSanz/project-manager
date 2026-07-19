@@ -229,13 +229,19 @@ export class TaskStore {
    */
   suggestFromSessions(sessions: AgentSession[]): Set<string> {
     const touched = new Set<string>();
-    const exists = this.db.prepare(`SELECT 1 FROM tasks WHERE source_ref = ? LIMIT 1`);
+    const existsRef = this.db.prepare(`SELECT 1 FROM tasks WHERE source_ref = ? LIMIT 1`);
+    // dedup por título: una sesión reanudada llega con otro sessionId pero mismo
+    // trabajo; sin esto salían dos sugeridas idénticas
+    const existsTitle = this.db.prepare(
+      `SELECT 1 FROM tasks WHERE project_id = ? AND source = 'agent' AND lower(title) = ? LIMIT 1`,
+    );
     for (const s of sessions) {
       // umbral: la sesión hizo algo (herramientas o conversación sustancial)
       if (s.toolUseCount < 3 && s.messageCount < 6) continue;
-      const title = s.title ?? s.firstPrompt;
+      const title = cleanSuggestionTitle(s.title ?? s.firstPrompt);
       if (!title) continue;
-      if (exists.get(s.id)) continue;
+      if (existsRef.get(s.id)) continue;
+      if (existsTitle.get(s.projectId, title.slice(0, 160).toLowerCase())) continue;
       const notes = [
         s.firstPrompt && s.firstPrompt !== title ? s.firstPrompt : null,
         s.filesTouched.length > 0 ? `Ficheros: ${s.filesTouched.slice(0, 8).join(", ")}` : null,
@@ -247,4 +253,23 @@ export class TaskStore {
     }
     return touched;
   }
+}
+
+/** Órdenes triviales que no describen un trabajo: no valen como título. */
+const TRIVIAL_TITLES = new Set([
+  "resume", "continue", "continúa", "continua", "sigue", "go", "ok", "vale",
+  "next", "y", "yes", "no", "sí", "si", "dale", "adelante",
+]);
+
+/**
+ * Limpia el título candidato de una sugerencia. Prefiere que no haya sugerencia
+ * a que la haya con un título sin señal (p. ej. «resume» o un primer prompt de
+ * una sola palabra), que era justo lo que ensuciaba la lista.
+ */
+function cleanSuggestionTitle(raw: string | null): string | null {
+  if (!raw) return null;
+  const clean = raw.replace(/\s+/g, " ").trim();
+  if (clean.length < 8) return null;
+  if (TRIVIAL_TITLES.has(clean.toLowerCase())) return null;
+  return clean;
 }

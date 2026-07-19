@@ -238,7 +238,7 @@ export interface TodayData {
 // ---------- Integraciones ----------
 
 export interface KnowledgeGraph {
-  nodes: Array<{ id: string; label: string; type: string; group?: string }>;
+  nodes: Array<{ id: string; label: string; type: string; group?: string; degree?: number }>;
   links: Array<{ source: string; target: string; type: string }>;
   generatedAt: string | null;
 }

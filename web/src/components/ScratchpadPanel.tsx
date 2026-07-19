@@ -63,7 +63,7 @@ export function ScratchpadPanel({ project }: { project: Project }) {
         onChange={(e) => change(e.target.value)}
         disabled={!loaded}
         placeholder="Ideas, pendientes, comandos que siempre se te olvidan…"
-        className="min-h-40 flex-1 resize-none rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-accent/60 focus:outline-none"
+        className="min-h-40 w-full min-w-0 flex-1 resize-none rounded-lg border border-white/10 bg-black/30 p-3 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-accent/60 focus:outline-none"
       />
     </section>
   );

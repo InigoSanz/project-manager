@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Project } from "@nebula/shared";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useNebula } from "../stores/nebula";
 import { deriveDNA } from "../visuals/dna";
 import { PixelPlanet } from "../components/PixelPlanet";
@@ -66,23 +65,11 @@ export function ProjectPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Hero con el planeta pixel-art */}
-      <div className="relative h-[36%] shrink-0 overflow-hidden max-sm:h-[28%]">
-        {/* resplandor de fondo con el color dominante del proyecto */}
-        <div
-          className="absolute inset-0"
-          style={{ background: `radial-gradient(ellipse 60% 70% at 50% 58%, ${dna.colors[0]}2e, transparent 70%)` }}
-        />
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          animate={{ y: [0, -7, 0] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-        >
-          <PixelPlanet project={project} size={touch || small ? 170 : 250} live={live} animate />
-        </motion.div>
-
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5">
-          <div className="pointer-events-auto flex gap-2">
+      {/* Cabecera compacta: una franja, no un tercio de la pantalla */}
+      <header className="shrink-0 border-b border-white/5 px-6 pt-4 pb-3 max-sm:px-3">
+        {/* navegación + salida al trabajo real */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-2">
             <Link
               to="/"
               className="glass flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 transition-colors hover:text-white"
@@ -99,63 +86,74 @@ export function ProjectPage() {
               Hoy
             </button>
           </div>
-          <div className="pointer-events-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {live && (
-              <span className="glass animate-pulse rounded-lg px-3 py-1.5 text-xs text-emerald-300">
+              <span className="glass animate-pulse rounded-lg px-3 py-1.5 text-xs text-emerald-300 max-sm:hidden">
                 ● agente trabajando
               </span>
             )}
-            {/* la salida de Nebula hacia el trabajo real */}
             <ProjectActions project={project} className="max-sm:hidden" />
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="pointer-events-none absolute bottom-4 left-6 max-sm:right-4 max-sm:bottom-2 max-sm:left-4"
-        >
-          <h1 className="pointer-events-auto flex items-center gap-2 font-display text-3xl font-bold text-white drop-shadow-lg max-sm:text-xl">
-            {project.name}
-            <FavoriteButton project={project} size={18} />
-            <ArchiveButton project={project} size={18} />
-          </h1>
-          <p className="mt-1 truncate text-xs text-slate-400">{project.path}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {project.git?.branch && (
-              <span className="glass rounded-md px-2 py-0.5 text-[11px] text-slate-200">⎇ {project.git.branch}</span>
-            )}
-            {(project.analysis?.frameworks ?? []).map((f) => (
-              <span key={f} className="glass rounded-md px-2 py-0.5 text-[11px] text-indigo-200">
-                {f}
-              </span>
-            ))}
+        {/* identidad: planeta pequeño en línea + nombre/ruta/rama + stats */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="relative shrink-0">
+            <div
+              className="absolute inset-0 -z-10 rounded-full blur-lg"
+              style={{ background: `${dna.colors[0]}55` }}
+            />
+            <PixelPlanet project={project} size={touch || small ? 46 : 58} live={live} animate />
           </div>
-        </motion.div>
+          <div className="min-w-0 flex-1">
+            <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-white max-sm:text-lg">
+              <span className="truncate">{project.name}</span>
+              <FavoriteButton project={project} size={16} />
+              <ArchiveButton project={project} size={16} />
+              {live && (
+                <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-normal text-emerald-300 sm:hidden">
+                  ● IA
+                </span>
+              )}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+              <span className="max-w-full truncate font-mono text-slate-500">{project.path}</span>
+              {project.git?.branch && (
+                <span className="glass rounded px-1.5 py-0.5 text-slate-200">⎇ {project.git.branch}</span>
+              )}
+              {(project.analysis?.frameworks ?? []).slice(0, 4).map((f) => (
+                <span key={f} className="glass rounded px-1.5 py-0.5 text-indigo-200">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-4 text-right max-sm:gap-3">
+            <Stat label="ficheros" value={metrics?.fileCount ?? 0} />
+            <Stat label="commits" value={metrics?.commitsLast30d ?? 0} />
+            <Stat label="IA" value={project.agents.total} />
+          </div>
+        </div>
 
-        <div className="pointer-events-none absolute right-6 bottom-4 flex gap-6 text-right max-sm:hidden">
-          <Stat label="ficheros" value={metrics?.fileCount ?? 0} />
-          <Stat label="commits/30d" value={metrics?.commitsLast30d ?? 0} />
-          <Stat label="sesiones IA" value={project.agents.total} />
-        </div>
-      </div>
-
-      {/* Mezcla de lenguajes */}
-      <div className="px-6 pt-3">
-        <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/5">
-          {langs.map((l) => (
-            <div key={l.name} style={{ width: `${l.ratio * 100}%`, background: l.color }} title={`${l.name} ${(l.ratio * 100).toFixed(1)}%`} />
-          ))}
-        </div>
-        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
-          {langs.slice(0, 6).map((l) => (
-            <span key={l.name} className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full" style={{ background: l.color }} />
-              {l.name} {(l.ratio * 100).toFixed(0)}%
-            </span>
-          ))}
-        </div>
-      </div>
+        {/* mezcla de lenguajes, fina */}
+        {langs.length > 0 && (
+          <div className="mt-3">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+              {langs.map((l) => (
+                <div key={l.name} style={{ width: `${l.ratio * 100}%`, background: l.color }} title={`${l.name} ${(l.ratio * 100).toFixed(1)}%`} />
+              ))}
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500 max-sm:hidden">
+              {langs.slice(0, 6).map((l) => (
+                <span key={l.name} className="flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: l.color }} />
+                  {l.name} {(l.ratio * 100).toFixed(0)}%
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </header>
 
       {/* Paneles */}
       <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-6 max-sm:px-3 max-sm:pb-3">
@@ -183,17 +181,50 @@ export function ProjectPage() {
           {tab === "git" && <GitPanel project={project} />}
           {tab === "agentes" && <AgentTimeline project={project} />}
           {tab === "tareas" && <TaskBoard project={project} />}
-          {tab === "conocimiento" && (
-            <div className="grid h-full grid-cols-1 gap-4 overflow-y-auto p-1 lg:grid-cols-2">
-              <div className="flex min-h-0 flex-col gap-4">
-                <ScratchpadPanel project={project} />
-                <NotesPanel project={project} />
-              </div>
-              <KnowledgeGraphPanel project={project} />
-            </div>
-          )}
+          {tab === "conocimiento" && <KnowledgeTab project={project} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Pestaña Conocimiento: el grafo estelar ocupa todo el ancho y las notas (bloc
+ * propio + Obsidian) viven en un cajón lateral plegable, para dar aire a un
+ * grafo denso sin perderlas de vista.
+ */
+function KnowledgeTab({ project }: { project: Project }) {
+  const [notesOpen, setNotesOpen] = useState(false);
+  return (
+    <div className="relative flex h-full min-h-0 gap-4 p-1">
+      <div className="min-w-0 flex-1">
+        <KnowledgeGraphPanel project={project} />
+      </div>
+      {notesOpen ? (
+        // en escritorio es un cajón lateral; en móvil, un panel superpuesto
+        <aside className="flex w-[340px] min-w-0 shrink-0 flex-col gap-4 overflow-y-auto max-sm:absolute max-sm:inset-0 max-sm:z-20 max-sm:w-auto max-sm:rounded-xl max-sm:bg-[#04050d]/95 max-sm:p-3 max-sm:backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Notas</h3>
+            <button
+              onClick={() => setNotesOpen(false)}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
+            >
+              <Icon name="chevronRight" size={13} />
+              Ocultar
+            </button>
+          </div>
+          <ScratchpadPanel project={project} />
+          <NotesPanel project={project} />
+        </aside>
+      ) : (
+        <button
+          onClick={() => setNotesOpen(true)}
+          className="glass absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:text-white"
+        >
+          <Icon name="note" size={14} />
+          Notas
+        </button>
+      )}
     </div>
   );
 }
@@ -295,8 +326,8 @@ function Fact({ label, value, mono = false }: { label: string; value: string; mo
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <div className="font-display text-xl font-bold text-white">{value}</div>
-      <div className="text-[10px] tracking-wider text-slate-400 uppercase">{label}</div>
+      <div className="font-display text-lg leading-none font-bold text-white">{value}</div>
+      <div className="mt-0.5 text-[9px] tracking-wider text-slate-500 uppercase">{label}</div>
     </div>
   );
 }

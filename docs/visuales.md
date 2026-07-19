@@ -35,6 +35,14 @@ El mapa no siempre muestra todos los repos detectados:
 - **Filtros** (tecnología, estado de git, actividad): ocultan planetas sin tocar el resto del mapa; las zonas conservan su sitio para que no se te mueva todo bajo el cursor.
 - **Espacio profundo**: la zona donde caen los repos cuya carpeta raíz ya no está en la configuración. Si aparece algo ahí, es que borraste o moviste una raíz.
 
+## El grafo de conocimiento (mapa estelar)
+
+La pestaña **Conocimiento** reutiliza el mismo motor para dibujar el grafo de [Graphify](integraciones.md#graphify-grafo-de-conocimiento) como un mapa estelar, en vez de un grafo 3D. Es el análogo del mapa de proyectos: **comunidades = constelaciones**, **nodos = estrellas**.
+
+- **`web/src/pixel/graph/graphLayout.ts`**: layout 2D determinista (semilla derivada del propio grafo, estable al reabrir). Agrupa por comunidad; coloca las constelaciones en espiral compacta + relajación de solapamientos (como `pixel/layout.ts`); dentro de cada una, Fruchterman-Reingold sobre las aristas internas para revelar la subestructura. El radio de cada estrella sale de su **grado** (conexiones); la constelación toma el nombre de su nodo más conectado.
+- **`web/src/pixel/graph/graphScene.ts`**: implementa el mismo contrato que `scene.ts` (`setData`/`update`/`renderWorld`/`hitTest`/`worldBounds`). Nebulosa por comunidad (gradiente cacheado), aristas tenues en un único trazo, estrellas pixel con glow en los hubs, y **al enfocar un nodo se encienden sus aristas y vecinos** mientras el resto se atenúa (lo que hace legible un grafo de cientos de nodos).
+- Reutiliza sin cambios `camera.ts`, `input.ts`, `engine.ts`, `starfield.ts`, `font.ts` y `palette.ts`, así que la interacción (pan, zoom, doble-clic para encuadrar) es idéntica a la del mapa.
+
 ## Ajustar la estética
 
 - Tamaño de los planetas: fórmula `size` en `pixel/sprites.ts` (`generateSpriteSheet`).

@@ -125,7 +125,7 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
   );
 
   // Operaciones que tocan el repositorio: solo desde este equipo.
-  app.post<{ Params: { id: string; action: string }; Body: { branch?: string } }>(
+  app.post<{ Params: { id: string; action: string }; Body: { branch?: string; stash?: boolean } }>(
     "/api/projects/:id/git/:action",
     async (req, reply) => {
       if (!requireLoopback(req, reply)) return reply;
@@ -143,7 +143,8 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
         case "checkout": {
           const branch = req.body?.branch;
           if (!branch) return reply.code(400).send({ error: "No se ha indicado a qué rama cambiar." });
-          result = await gitCheckout(project.path, branch);
+          // stash: true → guarda los cambios locales antes de cambiar de rama
+          result = await gitCheckout(project.path, branch, { stash: req.body?.stash === true });
           break;
         }
         default:
@@ -151,7 +152,7 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       }
       // el estado en pantalla debe reflejar el cambio inmediatamente
       await scanner.refreshGit(project.path);
-      if (!result.ok) return reply.code(409).send({ error: result.message });
+      if (!result.ok) return reply.code(409).send({ error: result.message, needsStash: result.needsStash === true });
       return result;
     },
   );

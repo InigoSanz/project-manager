@@ -260,6 +260,8 @@ export interface GitActionResult {
   ok: boolean;
   /** salida de git, para enseñarla tal cual cuando algo falla */
   message: string;
+  /** true si el checkout falló por cambios locales y se puede reintentar con stash */
+  needsStash?: boolean;
 }
 
 async function writeAction(repo: string, args: string[], timeoutMs = 60_000): Promise<GitActionResult> {
@@ -282,6 +284,34 @@ export function gitPull(repo: string): Promise<GitActionResult> {
   return writeAction(repo, ["pull", "--ff-only"]);
 }
 
-export function gitCheckout(repo: string, branch: string): Promise<GitActionResult> {
-  return writeAction(repo, ["checkout", branch], 30_000);
+/**
+ * Cambia de rama. Git rechaza el checkout si hay cambios locales que se
+ * perderían; con `stash: true` los guardamos antes en un stash (incluidos los
+ * no rastreados) y avisamos de cómo recuperarlos. Sin stash, si el fallo es por
+ * cambios locales, se marca `needsStash` para que la UI ofrezca guardarlos.
+ */
+export async function gitCheckout(
+  repo: string,
+  branch: string,
+  opts: { stash?: boolean } = {},
+): Promise<GitActionResult> {
+  if (opts.stash) {
+    const stash = await writeAction(
+      repo,
+      ["stash", "push", "-u", "-m", `nebula: auto antes de cambiar a ${branch}`],
+      30_000,
+    );
+    if (!stash.ok) return stash;
+    const co = await writeAction(repo, ["checkout", branch], 30_000);
+    if (!co.ok) return co;
+    return {
+      ok: true,
+      message: `Cambios guardados en un stash y cambiado a ${branch}. Recupéralos con «git stash pop».`,
+    };
+  }
+  const result = await writeAction(repo, ["checkout", branch], 30_000);
+  if (!result.ok && /would be overwritten|commit your changes or stash/i.test(result.message)) {
+    return { ...result, needsStash: true };
+  }
+  return result;
 }

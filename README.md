@@ -14,7 +14,8 @@ Nebula detecta automáticamente los repositorios Git de tu máquina y representa
 
 ## Índice
 
-- [Características](#características)
+- [En 1 minuto](#en-1-minuto)
+- [Qué hace](#qué-hace)
 - [Requisitos](#requisitos)
 - [Instalación rápida](#instalación-rápida)
 - [Primer arranque](#primer-arranque)
@@ -31,36 +32,29 @@ Nebula detecta automáticamente los repositorios Git de tu máquina y representa
 - [Solución de problemas](#solución-de-problemas)
 - [Licencia](#licencia)
 
-## Características
+## En 1 minuto
 
-- **Detección automática de repositorios**: selecciona carpetas desde la interfaz mediante el navegador integrado y Nebula localiza los repositorios Git. Los watchers detectan repositorios nuevos o eliminados sin reiniciar.
-- **Arte pixel generativo por proyecto**: cada repositorio tiene un planeta único y determinista, renderizado en un motor Canvas 2D propio, sin un solo asset dibujado a mano. La **tecnología marca el bioma** de la superficie (continentes, archipiélago, bandas, lava, hielo, cráteres, cristal), y el resto —anillos, lunas, halo, tormenta— sale del hash del repositorio.
-- **Mapa por zonas**: cada carpeta raíz es una región etiquetada del mapa, con pan, zoom con snap a píxel y encuadre por zona.
-- **ADN visual del repositorio**: los colores representan la mezcla de lenguajes; el tamaño refleja la complejidad; y el pulso muestra la actividad reciente.
-- **Git en tiempo real**: muestra rama actual, estado del working tree, ahead/behind, ramas, últimos commits y actividad reciente, actualizado mediante WebSocket.
-- **Agentes de IA**: unifica las sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto.
-- **Detección de sesiones activas**: el planeta de un proyecto late y suelta partículas mientras un agente está trabajando.
-- **Abrir donde trabajas**: un clic abre el proyecto en tu editor, en una terminal, en el explorador de archivos o el repositorio remoto en el navegador.
-- **Ejecutar scripts**: lanza cualquier script del `package.json` desde la propia app, con la salida en vivo y detección automática de la URL del servidor de desarrollo.
-- **Git accionable**: diff de cada fichero modificado, cambio de rama, `fetch`, `pull` y búsqueda en el historial.
-- **Contexto del proyecto**: README renderizado, versión, gestor de paquetes, detección de CI/tests/licencia y comprobación de dependencias desactualizadas.
-- **Bloc de notas por proyecto**: tus propias notas, guardadas en Nebula.
-- **Filtros y favoritos**: filtra el mapa por tecnología, estado de git o actividad, y fija los proyectos que más usas.
-- **Vista de todas las tareas**: `/tareas` reúne las de todos los orígenes con filtros por proyecto, estado, origen y vencimiento.
-- **Resumen global**: qué repos tienen cambios sin commitear, cuáles van por detrás del remoto y el reparto de lenguajes de todo tu código.
-- **Vista Hoy**: reúne tareas, avisos Git y agentes activos de todos los proyectos.
-- **Creación rápida de tareas**: permite añadir tareas desde la vista Hoy utilizando `@proyecto`.
-- **Kanban por proyecto**: organiza tareas manuales, sugeridas por agentes y sincronizadas desde servicios externos.
-- **Integración con Jira**: importa issues asignados al usuario y permite cerrarlos desde Nebula mediante write-back.
-- **Integración con Microsoft Planner**: sincroniza tareas de Planner mediante autenticación delegada de Microsoft 365.
-- **Integración con GitHub**: trae tus pull requests, las revisiones que te han pedido y los issues asignados, emparejados con cada repo por la URL de su remoto.
-- **Control de sincronización**: permite desactivar la escritura hacia Jira o Planner y utilizar las integraciones en modo de solo lectura.
-- **Grafo de conocimiento**: renderiza en 3D la salida de [Graphify](https://github.com/safishamsi/graphify) cuando existe `graphify-out/graph.json`.
-- **Integración con Obsidian**: encuentra notas relacionadas con cada proyecto y las abre mediante `obsidian://`.
-- **Command palette**: usa `Ctrl+K` para buscar proyectos, localizar tareas o crear una nueva.
-- **Panel de ajustes**: configura carpetas, sincronización, notificaciones, intervalos y acceso desde otros dispositivos.
-- **Experiencia responsive**: interfaz adaptada a escritorio, móvil y tablet.
-- **Tour de bienvenida y ayuda integrada**: onboarding saltable y ayuda permanente con la tecla `?`.
+```bash
+git clone https://github.com/InigoSanz/nebula-project-manager.git
+cd nebula-project-manager
+pnpm go            # instala + compila + arranca → http://localhost:4816
+```
+
+La primera vez, si Nebula no encuentra tus repos, te deja **elegir la carpeta** donde viven y escanea todo lo que haya dentro. No hay nada que configurar para empezar; las integraciones y los agentes son opcionales.
+
+## Qué hace
+
+**El mapa.** Detecta tus repos Git y los dibuja como planetas pixel-art en un mapa 2D, agrupados por carpeta raíz. La superficie la marca la tecnología detectada, el tamaño la complejidad, y el planeta late y suelta partículas cuando un agente de IA trabaja dentro. Pan, zoom, filtros (tecnología, git, actividad) y favoritos.
+
+**Trabajar sin salir.** Desde cualquier proyecto: abrir en tu editor, terminal, carpeta o el remoto en el navegador; ejecutar los scripts del `package.json` con la salida en vivo; y operar con git (estado, diff, cambio de rama —guardando en un stash si hace falta—, `fetch`/`pull`, búsqueda en el historial). Estas acciones solo funcionan desde tu propio equipo.
+
+**Tus tareas, en un sitio.** Reúne las tareas propias, las sugeridas por tus sesiones de IA y las de Jira, Planner y GitHub. Vista **Hoy** (qué toca ahora), **`/tareas`** (todo con filtros) y un **kanban** por proyecto. Creación rápida escribiendo `@proyecto`, `!prioridad` y `^fecha`.
+
+**Contexto del repo.** README renderizado, versión y gestor, salud (CI, tests, licencia), dependencias desactualizadas, actividad git en vivo, sesiones de **Claude Code, Codex, Cursor, Gemini y Antigravity**, bloc de notas propio y el grafo de conocimiento de Graphify dibujado como **mapa estelar**.
+
+**Integraciones (opcionales).** Jira y Microsoft Planner con write-back opcional, GitHub (PRs, revisiones e issues), Obsidian (notas) y Graphify (grafo). Si una herramienta no está instalada, Nebula sigue funcionando sin ella.
+
+**Para el día a día.** Responsive (escritorio, móvil y tablet, con acceso por QR en la red local), arranque desatendido en Windows, command palette (`Ctrl+K`), tour de bienvenida y ayuda con `?`. Todo es local: nada sale de tu máquina salvo lo que tú configures.
 
 ## Requisitos
 
@@ -79,8 +73,8 @@ Las integraciones y agentes son opcionales. Si una herramienta no está instalad
 ## Instalación rápida
 
 ```bash
-git clone https://github.com/InigoSanz/project-manager.git
-cd project-manager
+git clone https://github.com/InigoSanz/nebula-project-manager.git
+cd nebula-project-manager
 pnpm go
 ```
 
@@ -236,7 +230,8 @@ Ejemplo de generación:
 ```bash
 uv tool install graphify
 cd tu-repositorio
-graphify map
+graphify update .           # extrae el grafo (AST, sin LLM)
+graphify cluster-only .     # agrupa en comunidades (opcional)
 ```
 
 ### Obsidian

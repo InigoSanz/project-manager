@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { GitCommit, GitDetail, GitFileDiff, Project } from "@nebula/shared";
 import { useToasts } from "./Toast";
 import { Icon } from "./Icon";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { plural } from "../lib/plural";
 
 /** Visor de diff de un fichero: coloreado por tipo de línea. */
@@ -129,6 +130,8 @@ export function GitPanel({ project }: { project: Project }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<GitCommit[] | null>(null);
+  // rama a la que cambiar cuando git pide guardar los cambios antes (stash)
+  const [stashPrompt, setStashPrompt] = useState<string | null>(null);
   const push = useToasts((s) => s.push);
 
   // búsqueda en el historial con debounce (git log --grep / -S)
@@ -178,6 +181,32 @@ export function GitPanel({ project }: { project: Project }) {
       const what = ACTION_LABEL[action] ?? action;
       if (res.ok) push({ level: "success", message: data.message || `${what}: hecho.` });
       else push({ level: "error", message: `No se pudo ${what.toLowerCase()}: ${data.error ?? "error de git"}` });
+      const fresh = await fetch(`/api/projects/${project.id}/git`);
+      if (fresh.ok) setDetail((await fresh.json()) as GitDetail);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Cambia de rama. Si git lo rechaza por cambios sin guardar, abre el diálogo
+   * para ofrecer guardarlos en un stash, en vez de un error críptico.
+   */
+  const runCheckout = async (branch: string, stash: boolean): Promise<void> => {
+    setBusy("checkout");
+    try {
+      const res = await fetch(`/api/projects/${project.id}/git/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branch, stash }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string; needsStash?: boolean };
+      if (!res.ok && data.needsStash && !stash) {
+        setStashPrompt(branch); // preguntar antes de guardar en stash
+        return;
+      }
+      if (res.ok) push({ level: "success", message: data.message || `Cambiado a ${branch}.` });
+      else push({ level: "error", message: `No se pudo cambiar de rama: ${data.error ?? "error de git"}` });
       const fresh = await fetch(`/api/projects/${project.id}/git`);
       if (fresh.ok) setDetail((await fresh.json()) as GitDetail);
     } finally {
@@ -286,26 +315,22 @@ export function GitPanel({ project }: { project: Project }) {
           {openDiff && <DiffViewer projectId={project.id} file={openDiff} onClose={() => setOpenDiff(null)} />}
         </section>
 
-        <section className="glass rounded-xl p-4">
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
-            Actividad · 30 días
-          </h3>
-          <CommitSpark histogram={project.analysis?.metrics.commitHistogram ?? []} />
-        </section>
-
+        {/* Ramas justo bajo Estado: cambiar de rama es acción frecuente y no
+            debe quedar bajo el pliegue */}
         <section className="glass rounded-xl p-4">
           <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Ramas</h3>
           <ul className="max-h-48 space-y-1.5 overflow-y-auto">
             {branches.map((b) => (
               <li key={b.name}>
-                {/* pulsar una rama cambia a ella (git rechaza si hay conflicto) */}
+                {/* pulsar una rama cambia a ella; si hay cambios sin guardar,
+                    ofrece guardarlos en un stash antes de cambiar */}
                 <button
-                  onClick={() => !b.isCurrent && void gitAction("checkout", { branch: b.name })}
+                  onClick={() => !b.isCurrent && void runCheckout(b.name, false)}
                   disabled={b.isCurrent || busy !== null}
                   title={
                     b.isCurrent
                       ? "Rama actual"
-                      : `Cambiar a ${b.name} · si tienes cambios que se perderían, git lo rechaza`
+                      : `Cambiar a ${b.name} · si tienes cambios sin guardar, te ofrece guardarlos en un stash`
                   }
                   className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left text-xs transition-colors enabled:hover:bg-white/5 disabled:cursor-default"
                 >
@@ -318,6 +343,13 @@ export function GitPanel({ project }: { project: Project }) {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="glass rounded-xl p-4">
+          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+            Actividad · 30 días
+          </h3>
+          <CommitSpark histogram={project.analysis?.metrics.commitHistogram ?? []} />
         </section>
       </div>
 
@@ -361,6 +393,28 @@ export function GitPanel({ project }: { project: Project }) {
           )}
         </ul>
       </section>
+
+      <ConfirmDialog
+        open={stashPrompt !== null}
+        icon="branch"
+        title="Cambios sin guardar"
+        message={
+          <>
+            Tienes cambios sin guardar en esta rama. ¿Guardarlos en un <strong className="text-slate-200">stash</strong> de
+            git y cambiar a «{stashPrompt}»?
+            <br />
+            <span className="mt-1 inline-block text-xs text-slate-500">Podrás recuperarlos con «git stash pop».</span>
+          </>
+        }
+        confirmLabel="Guardar y cambiar"
+        cancelLabel="Cancelar"
+        onCancel={() => setStashPrompt(null)}
+        onConfirm={() => {
+          const branch = stashPrompt;
+          setStashPrompt(null);
+          if (branch) void runCheckout(branch, true);
+        }}
+      />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function NotesPanel({ project }: { project: Project }) {
       {/* cabecera explícita: en la pestaña Conocimiento conviven estas notas
           (de Obsidian, solo lectura) con el bloc propio de Nebula */}
       <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Notas de Obsidian</h3>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3">
         {notes.map((n) => (
           <li key={`${n.vault}/${n.file}`}>
             <a

@@ -291,6 +291,12 @@ async function main(): Promise<void> {
     lastFetchAt = Date.now();
     for (const { path: repo } of store.allRows()) void fetchRemote(repo);
   }, 60_000).unref();
+
+  // Reevaluación periódica de sesiones de agentes: el watcher solo dispara al
+  // cambiar un fichero, así que una sesión que termina no se vuelve a mirar y su
+  // sugerencia no se creaba hasta reiniciar. Al pasar por aquí, las sesiones ya
+  // llevan >2 min sin cambios → cuentan como "done" y generan la sugerida.
+  setInterval(() => void agents.refreshAll(), 90_000).unref();
 }
 
 main().catch((err) => {

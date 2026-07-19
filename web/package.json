@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "3d-force-graph": "^1.80.0",
     "@nebula/shared": "workspace:*",
     "dompurify": "^3.4.12",
     "framer-motion": "^12.42.2",

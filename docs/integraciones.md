@@ -2,15 +2,16 @@
 
 ## Graphify (grafo de conocimiento)
 
-[Graphify](https://github.com/safishamsi/graphify) genera un grafo de conocimiento por repo (tree-sitter, 100% local). Nebula detecta su salida y la renderiza en 3D, en la pestaña **Conocimiento** del proyecto.
+[Graphify](https://github.com/safishamsi/graphify) genera un grafo de conocimiento por repo (tree-sitter, 100% local). Nebula detecta su salida y la dibuja como un **mapa estelar pixel-art** en la pestaña **Conocimiento** del proyecto: cada símbolo es una estrella (tamaño ∝ conexiones), cada comunidad una constelación con su nebulosa, y las llamadas/imports son líneas de luz. Al enfocar una estrella se ilumina su vecindario. Comparte cámara y gestos con el mapa de proyectos.
 
 ```bash
 uv tool install graphify
 cd tu-repo
-graphify map
+graphify update .        # extrae el grafo con AST (sin LLM ni API key)
+graphify cluster-only .  # opcional: agrupa el grafo en comunidades
 ```
 
-Nebula lee `<repo>/graphify-out/graph.json` (nodos con `community`/`degree`, aristas `calls`/`imports`/…). Grafos enormes se recortan a los 600 nodos de mayor grado para mantener el render fluido. Si no hay grafo, la pestaña muestra las instrucciones.
+Nebula lee `<repo>/graphify-out/graph.json` (nodos con `label`/`community`, aristas `calls`/`imports`/…). El grado de cada nodo se calcula sobre las aristas del propio grafo. Grafos enormes se recortan a los 600 nodos de mayor grado para mantener el render fluido. Si no hay grafo, la pestaña muestra las instrucciones.
 
 ## Obsidian (notas)
 
