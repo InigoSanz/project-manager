@@ -18,21 +18,22 @@ export function NotesPanel({ project }: { project: Project }) {
   if (!notes) return <p className="p-4 text-sm text-slate-500">Buscando notas…</p>;
   if (notes.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-center text-sm text-slate-400">
-        <div>
-          <p className="text-3xl">📓</p>
-          <p className="mt-3">Sin notas de Obsidian que mencionen «{project.name}».</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Se buscan notas .md en tus vaults que citen el proyecto por nombre.
-          </p>
-        </div>
-      </div>
+      <section className="glass rounded-xl p-4">
+        <h3 className="mb-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">Notas de Obsidian</h3>
+        <p className="text-xs text-slate-500">
+          Ninguna nota de tus vaults menciona «{project.name}». Se buscan ficheros .md que citen el proyecto por
+          nombre; se abren en Obsidian y Nebula no las modifica.
+        </p>
+      </section>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto p-1">
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="glass rounded-xl p-4">
+      {/* cabecera explícita: en la pestaña Conocimiento conviven estas notas
+          (de Obsidian, solo lectura) con el bloc propio de Nebula */}
+      <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">Notas de Obsidian</h3>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {notes.map((n) => (
           <li key={`${n.vault}/${n.file}`}>
             <a
@@ -51,6 +52,6 @@ export function NotesPanel({ project }: { project: Project }) {
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }

@@ -23,6 +23,8 @@ pnpm install     # dependencias
 pnpm build       # compila la UI (web/dist)
 pnpm start       # daemon + UI en http://localhost:4816
 pnpm dev         # desarrollo: UI con hot reload en :5173, API en :4816
+pnpm dev:web     # solo la UI (contra un daemon ya levantado)
+pnpm dev:server  # solo el daemon
 pnpm typecheck   # comprueba tipos de los 3 paquetes
 ```
 
@@ -43,7 +45,9 @@ El daemon arranca sin ventana al iniciar sesión; la UI queda disponible en `htt
 
 ## En el móvil y la tablet
 
-La UI es completamente responsive: barra de acciones inferior en el móvil, kanban con carrusel horizontal, controles táctiles siempre visibles y escena 3D en calidad adaptada. Para abrirla desde otro dispositivo: activa el acceso LAN y escanea el QR (ver [configuracion.md](configuracion.md#acceso-desde-el-móvil-o-la-tablet)).
+La UI es completamente responsive: barra de acciones inferior en el móvil, kanban con carrusel horizontal, controles táctiles siempre visibles y mapa con menos capas de estrellas y menos frames de rotación para que vaya fluido. Para abrirla desde otro dispositivo: activa el acceso LAN y escanea el QR (ver [configuracion.md](configuracion.md#acceso-desde-el-móvil-o-la-tablet)).
+
+Desde el móvil **ves** todo el estado pero no puedes lanzar nada: abrir el editor, ejecutar scripts y las acciones de git solo funcionan desde el propio equipo. Es a propósito — ver [api.md](api.md#seguridad).
 
 ## Actualizar
 

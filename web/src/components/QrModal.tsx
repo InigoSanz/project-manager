@@ -15,6 +15,15 @@ export function QrModal({ open, onClose, onEnableLan }: { open: boolean; onClose
 
   useEffect(() => {
     if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
     setInfo(null);
     void fetch("/api/lan-info")
       .then((r) => r.json())

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TaskItem } from "@nebula/shared";
 import { Icon } from "./Icon";
@@ -52,6 +52,15 @@ export function TaskMetaEditor({ task, onSaved }: { task: TaskItem; onSaved: () 
   const [open, setOpen] = useState(false);
   const [due, setDue] = useState(task.dueDate ?? "");
   const [prio, setPrio] = useState<number>(task.priority);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const save = async (): Promise<void> => {
     await fetch(`/api/tasks/${task.id}`, {

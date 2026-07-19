@@ -50,7 +50,8 @@ export type IconName =
   | "cube"
   | "star"
   | "orbit"
-  | "inbox";
+  | "inbox"
+  | "archive";
 
 const PATHS: Record<IconName, ReactNode> = {
   // controles deslizantes: a 14px se lee mucho mejor que una rueda dentada
@@ -230,6 +231,14 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <circle cx="8" cy="8" r="2.6" />
       <ellipse cx="8" cy="8" rx="6.2" ry="2.8" transform="rotate(-28 8 8)" />
+    </>
+  ),
+  // caja con tapa: archivar sin borrar
+  archive: (
+    <>
+      <rect x="1.8" y="2.6" width="12.4" height="3.2" rx="0.8" />
+      <path d="M3.2 5.8v6.6a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V5.8" />
+      <path d="M6.4 8.6h3.2" />
     </>
   ),
   inbox: (

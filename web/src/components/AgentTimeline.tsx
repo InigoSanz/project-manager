@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { AgentSession, Project } from "@nebula/shared";
 import { useNebula } from "../stores/nebula";
 import { Icon, type IconName } from "./Icon";
+import { plural } from "../lib/plural";
 
 /** Identidad visual por agente: icono + etiqueta (nunca solo color). */
 const AGENT_META: Record<string, { label: string; icon: IconName; chip: string }> = {
@@ -97,10 +98,12 @@ export function AgentTimeline({ project }: { project: Project }) {
                   <p className="mt-1 line-clamp-2 text-xs text-slate-400">{s.firstPrompt}</p>
                 )}
                 <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500">
-                  <span>{s.messageCount} mensajes</span>
-                  <span>{s.toolUseCount} herramientas</span>
+                  <span>{plural(s.messageCount, "mensaje")}</span>
+                  <span>{plural(s.toolUseCount, "herramienta")}</span>
                   {s.filesTouched.length > 0 && (
-                    <span title={s.filesTouched.join("\n")}>{s.filesTouched.length} ficheros tocados</span>
+                    <span title={s.filesTouched.join("\n")}>
+                      {plural(s.filesTouched.length, "fichero tocado", "ficheros tocados")}
+                    </span>
                   )}
                 </div>
               </div>

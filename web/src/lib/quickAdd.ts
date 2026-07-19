@@ -2,7 +2,7 @@ import type { Project, TaskItem } from "@nebula/shared";
 
 export interface QuickAddParse {
   title: string;
-  /** proyecto destino; null = bandeja personal */
+  /** proyecto destino; null = «Sin proyecto» */
   project: Project | null;
   /** el texto tenía @algo que no casó con ningún proyecto */
   unknownMention: string | null;
@@ -80,7 +80,7 @@ export function parseQuickAdd(text: string, projects: Project[]): QuickAddParse 
 
 /** Resumen del destino/atributos para la preview y los toasts. */
 export function describeParse(parse: QuickAddParse): string {
-  const parts = [parse.project?.name ?? "tu bandeja personal"];
+  const parts = [parse.project?.name ?? "Sin proyecto"];
   if (parse.dueDate) parts.push(`vence ${parse.dueDate}`);
   if (parse.priority > 0) parts.push(["", "baja", "media", "alta"][parse.priority]);
   return parts.join(" · ");
@@ -94,5 +94,5 @@ export async function submitQuickAdd(parse: QuickAddParse): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: parse.title, dueDate: parse.dueDate, priority: parse.priority }),
   });
-  return parse.project?.name ?? "tu bandeja personal";
+  return parse.project?.name ?? "Sin proyecto";
 }

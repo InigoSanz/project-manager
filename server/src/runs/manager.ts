@@ -60,7 +60,9 @@ export class RunManager {
     packageManager: string;
   }): { ok: true; info: RunInfo } | { ok: false; error: string } {
     const existing = this.findLive(params.projectId, params.script);
-    if (existing) return { ok: false, error: `«${params.script}» ya se está ejecutando en este proyecto.` };
+    if (existing) {
+      return { ok: false, error: `«${params.script}» ya se está ejecutando. Deténlo antes de volver a lanzarlo.` };
+    }
 
     const runId = `run-${++this.seq}-${Date.now().toString(36)}`;
     const info: RunInfo = {

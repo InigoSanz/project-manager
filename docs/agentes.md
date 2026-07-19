@@ -12,7 +12,7 @@ Todos los proveedores implementan `AgentProvider` (`server/src/agents/types.ts`)
 ```
 
 - El mapeo sesión → repo se hace por el `cwd`/workspace de la sesión (`matchProject`, multiplataforma).
-- Una sesión es **live** si su fichero cambió hace < 2 min → el orbe del proyecto late y el timeline la marca "● en vivo".
+- Una sesión es **live** si su fichero cambió hace < 2 min → el planeta del proyecto late, suelta partículas en órbita y el timeline la marca "● en vivo".
 - Caché incremental en la tabla `parse_cache` (mtime+size): solo se re-parsea lo que cambió.
 - Las sesiones terminadas con trabajo real (≥3 herramientas o ≥6 mensajes) generan **tareas sugeridas** en el kanban.
 
@@ -37,4 +37,4 @@ Todos los proveedores implementan `AgentProvider` (`server/src/agents/types.ts`)
 2. Regístralo en la lista `providers` de `server/src/agents/manager.ts`.
 3. Añade su identidad visual (icono + etiqueta + color) en `AGENT_META` de `web/src/components/AgentTimeline.tsx`.
 
-Con eso hereda gratis: timeline, badge en vivo, pulso del orbe, tareas sugeridas y contadores.
+Con eso hereda gratis: timeline, badge en vivo, pulso del planeta, tareas sugeridas y contadores.

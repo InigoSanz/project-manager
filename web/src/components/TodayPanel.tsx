@@ -338,7 +338,9 @@ export function TodayPanel({ open, onClose }: { open: boolean; onClose: () => vo
 
                   {data.inbox.length > 0 && (
                     <Section title="Sin proyecto" count={data.inbox.length}>
-                      <p className="mb-1 text-[11px] text-slate-600">Issues y tareas que no casan con ningún repo. Asígnalas o complétalas aquí.</p>
+                      <p className="mb-1 text-[11px] text-slate-600">
+                        Tareas e issues que no coinciden con ningún repositorio. Asígnalas a un proyecto desde aquí.
+                      </p>
                       <ul>
                         {data.inbox.map((t) => (
                           <InboxRow key={t.id} task={t} onChanged={() => void refresh()} />

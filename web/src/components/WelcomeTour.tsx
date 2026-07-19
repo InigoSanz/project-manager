@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const TOUR_KEY = "nebula:tour-v2";
+const TOUR_KEY = "nebula:tour-v3";
 
 const STEPS = [
   {
     icon: "🪐",
     title: "Un mapa espacial, un planeta por repo",
-    body: "Cada carpeta raíz que configures es una zona del mapa, y cada planeta uno de tus repositorios: su superficie viene de tus lenguajes y suelta partículas cuando un agente de IA trabaja dentro. Click para entrar, doble click para encuadrar una zona.",
+    body: "Cada carpeta raíz que configures es una zona del mapa y cada planeta uno de tus repositorios: su superficie sale de tus lenguajes y suelta partículas cuando un agente de IA trabaja dentro. Haz clic para entrar y doble clic para encuadrar una zona.",
   },
   {
-    icon: "◔",
-    title: "«Hoy»: todo lo accionable en un sitio",
-    body: "Pulsa la tecla T (o el botón ◔ Hoy): tus tareas de todos los proyectos, issues de Jira/Planner, avisos de git y agentes activos. Completa con un click.",
+    icon: "🚀",
+    title: "Y desde aquí trabajas",
+    body: "Abre cualquier proyecto en tu editor, en una terminal o en GitHub con un clic. Lanza los scripts del package.json y mira su salida en vivo, revisa los cambios sin commitear y haz fetch o pull sin salir de Nebula.",
   },
   {
-    icon: "⌨",
-    title: "Crea una tarea con la tecla N",
-    body: "Eliges proyecto, fecha y prioridad con botones, sin aprenderte ninguna sintaxis. Con Ctrl+K buscas cualquier proyecto o tarea, y la ayuda completa está siempre en la tecla ?",
+    icon: "◑",
+    title: "Todo lo pendiente, junto",
+    body: "Pulsa T para ver lo accionable de hoy: tareas de todos tus proyectos, issues de Jira, Planner y GitHub, revisiones que te han pedido y avisos de git. Crea una tarea con N y busca lo que sea con Ctrl+K.",
   },
 ];
 

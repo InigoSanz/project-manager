@@ -27,18 +27,20 @@ Nebula detecta automáticamente los repositorios Git de tu máquina y representa
 - [Arquitectura del repositorio](#arquitectura-del-repositorio)
 - [Seguridad y privacidad](#seguridad-y-privacidad)
 - [Documentación](#documentación)
+- [Actualización](#actualización)
+- [Solución de problemas](#solución-de-problemas)
 - [Licencia](#licencia)
 
 ## Características
 
 - **Detección automática de repositorios**: selecciona carpetas desde la interfaz mediante el navegador integrado y Nebula localiza los repositorios Git. Los watchers detectan repositorios nuevos o eliminados sin reiniciar.
-- **Arte pixel generativo por proyecto**: cada repositorio tiene un planeta único y determinista (rocoso, gaseoso, anillado, cristalino o estación) renderizado en un motor Canvas 2D propio, sin un solo asset dibujado a mano.
+- **Arte pixel generativo por proyecto**: cada repositorio tiene un planeta único y determinista, renderizado en un motor Canvas 2D propio, sin un solo asset dibujado a mano. La **tecnología marca el bioma** de la superficie (continentes, archipiélago, bandas, lava, hielo, cráteres, cristal), y el resto —anillos, lunas, halo, tormenta— sale del hash del repositorio.
 - **Mapa por zonas**: cada carpeta raíz es una región etiquetada del mapa, con pan, zoom con snap a píxel y encuadre por zona.
 - **ADN visual del repositorio**: los colores representan la mezcla de lenguajes; el tamaño refleja la complejidad; y el pulso muestra la actividad reciente.
 - **Git en tiempo real**: muestra rama actual, estado del working tree, ahead/behind, ramas, últimos commits y actividad reciente, actualizado mediante WebSocket.
 - **Agentes de IA**: unifica las sesiones de **Claude Code**, **Codex CLI**, **Cursor**, **Gemini CLI** y **Antigravity** por proyecto.
 - **Detección de sesiones activas**: el planeta de un proyecto late y suelta partículas mientras un agente está trabajando.
-- **Abrir donde trabajas**: un click abre el proyecto en tu editor, en una terminal, en el explorador de archivos o el repositorio remoto en el navegador.
+- **Abrir donde trabajas**: un clic abre el proyecto en tu editor, en una terminal, en el explorador de archivos o el repositorio remoto en el navegador.
 - **Ejecutar scripts**: lanza cualquier script del `package.json` desde la propia app, con la salida en vivo y detección automática de la URL del servidor de desarrollo.
 - **Git accionable**: diff de cada fichero modificado, cambio de rama, `fetch`, `pull` y búsqueda en el historial.
 - **Contexto del proyecto**: README renderizado, versión, gestor de paquetes, detección de CI/tests/licencia y comprobación de dependencias desactualizadas.
@@ -232,7 +234,7 @@ graphify-out/graph.json
 Ejemplo de generación:
 
 ```bash
-uv tool install graphifyy
+uv tool install graphify
 cd tu-repositorio
 graphify map
 ```
@@ -319,7 +321,7 @@ Nebula está diseñado para funcionar localmente.
 - La comprobación de dependencias desactualizadas consulta el registry de npm, y solo cuando la pides a mano.
 
 > [!CAUTION]
-> Las credenciales de Jira se guardan en texto plano en el equipo local. Protege tu cuenta de usuario, no compartas el archivo de configuración y revoca cualquier token expuesto.
+> Las credenciales de Jira y el token de GitHub se guardan en texto plano en el equipo local, igual que hacen `.npmrc` o `.aws/credentials`. Protege tu cuenta de usuario, no compartas el archivo de configuración y revoca cualquier token expuesto.
 
 Consulta [Configuración](docs/configuracion.md) para conocer todos los detalles.
 
@@ -330,6 +332,8 @@ La documentación completa se encuentra en [`docs/`](docs/README.md):
 - [Instalación](docs/instalacion.md)
 - [Configuración](docs/configuracion.md)
 - [Arquitectura](docs/arquitectura.md)
+- [Acciones sobre proyectos](docs/acciones.md)
+- [Tareas](docs/tareas.md)
 - [Agentes de IA](docs/agentes.md)
 - [Integraciones](docs/integraciones.md)
 - [Sistema visual](docs/visuales.md)

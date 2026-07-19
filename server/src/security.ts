@@ -55,6 +55,9 @@ export function requireLoopback(req: FastifyRequest, reply: FastifyReply): boole
   return false;
 }
 
+/** Marcador que el cliente reenvía cuando no ha tocado un token. */
+export const MASKED_TOKEN = "••••••••";
+
 // ---------- Validación de la configuración ----------
 
 const STRING_ARRAY = (v: unknown): boolean => Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -95,17 +98,19 @@ export function sanitizeConfigPatch(body: unknown): { ok: true; value: Partial<N
   return { ok: true, value: out as Partial<NebulaConfig> };
 }
 
-/** Config para enviar al cliente: sin secretos en claro. */
-export function redactConfig(cfg: NebulaConfig): NebulaConfig & { hasJiraToken: boolean } {
+/** Config para enviar al cliente: ningún secreto viaja en claro. */
+export function redactConfig(
+  cfg: NebulaConfig,
+): NebulaConfig & { hasJiraToken: boolean; hasGithubToken: boolean } {
   const jira = cfg.integrations?.jira;
+  const github = cfg.integrations?.github;
+  const integrations = { ...cfg.integrations };
+  if (jira) integrations.jira = { ...jira, token: jira.token ? MASKED_TOKEN : "" };
+  if (github) integrations.github = { ...github, token: github.token ? MASKED_TOKEN : "" };
   return {
     ...cfg,
-    integrations: jira
-      ? { ...cfg.integrations, jira: { ...jira, token: jira.token ? "••••••••" : "" } }
-      : cfg.integrations,
+    integrations,
     hasJiraToken: Boolean(jira?.token),
+    hasGithubToken: Boolean(github?.token),
   };
 }
-
-/** Marcador que el cliente reenvía cuando no ha tocado el token. */
-export const MASKED_TOKEN = "••••••••";

@@ -11,7 +11,7 @@ import { ScriptsPanel } from "../components/ScriptsPanel";
 import { ReadmePanel } from "../components/ReadmePanel";
 import { ScratchpadPanel } from "../components/ScratchpadPanel";
 import { PullRequests } from "../components/PullRequests";
-import { FavoriteButton } from "../components/FavoriteButton";
+import { ArchiveButton, FavoriteButton } from "../components/ProjectFlags";
 import { OutdatedPanel } from "../components/OutdatedPanel";
 import { useIsSmallScreen, useIsTouch } from "../lib/device";
 import { GitPanel } from "../components/GitPanel";
@@ -118,6 +118,7 @@ export function ProjectPage() {
           <h1 className="pointer-events-auto flex items-center gap-2 font-display text-3xl font-bold text-white drop-shadow-lg max-sm:text-xl">
             {project.name}
             <FavoriteButton project={project} size={18} />
+            <ArchiveButton project={project} size={18} />
           </h1>
           <p className="mt-1 truncate text-xs text-slate-400">{project.path}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -224,12 +225,40 @@ function SummaryTab({ project }: { project: Project }) {
           </dl>
           {health && (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
-              <HealthChip ok={Boolean(health.readme)} label={health.readme ? "README" : "sin README"} />
-              <HealthChip ok={Boolean(health.license)} label={health.license ? "Licencia" : "sin licencia"} />
-              <HealthChip ok={health.ci.length > 0} label={health.ci.length > 0 ? `CI (${health.ci.length})` : "sin CI"} />
-              <HealthChip ok={Boolean(health.tests)} label={health.tests ?? "sin tests"} />
-              {health.envExample && <HealthChip ok label=".env.example" />}
-              {health.envLocal && <HealthChip ok label=".env local" />}
+              <HealthChip
+                ok={Boolean(health.readme)}
+                label={health.readme ? "README" : "sin README"}
+                title={health.readme ? `Documentación en ${health.readme}` : "No se ha encontrado ningún README"}
+              />
+              <HealthChip
+                ok={Boolean(health.license)}
+                label={health.license ? "Licencia" : "sin licencia"}
+                title={health.license ? `Licencia en ${health.license}` : "No se ha encontrado fichero de licencia"}
+              />
+              <HealthChip
+                ok={health.ci.length > 0}
+                label={health.ci.length > 0 ? `CI (${health.ci.length})` : "sin CI"}
+                title={
+                  health.ci.length > 0
+                    ? `Integración continua: ${health.ci.join(", ")}`
+                    : "No se ha encontrado configuración de integración continua"
+                }
+              />
+              <HealthChip
+                ok={Boolean(health.tests)}
+                label={health.tests ?? "sin tests"}
+                title={
+                  health.tests
+                    ? `Framework de tests detectado: ${health.tests}`
+                    : "No se ha detectado ningún framework de tests"
+                }
+              />
+              {health.envExample && (
+                <HealthChip ok label=".env.example" title="Hay una plantilla de variables de entorno" />
+              )}
+              {health.envLocal && (
+                <HealthChip ok label=".env local" title="Hay un .env en el repo (Nebula nunca lee su contenido)" />
+              )}
             </div>
           )}
         </section>
@@ -241,10 +270,11 @@ function SummaryTab({ project }: { project: Project }) {
 }
 
 /** Señal de salud: verde si está, apagada si falta (nunca alarmista). */
-function HealthChip({ ok, label }: { ok: boolean; label: string }) {
+function HealthChip({ ok, label, title }: { ok: boolean; label: string; title: string }) {
   return (
     <span
-      className={`rounded-md px-2 py-0.5 text-[10px] ${
+      title={title}
+      className={`cursor-default rounded-md px-2 py-0.5 text-[10px] ${
         ok ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-slate-500"
       }`}
     >

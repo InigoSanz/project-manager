@@ -37,7 +37,7 @@ export interface VisualDNA {
   colorCount: number;
   /** detalle de la superficie del planeta */
   noiseScale: number;
-  /** rugosidad heredada del shape (la usa el asteroide) */
+  /** rugosidad heredada del shape; sin uso desde que los cuerpos son todos esferas */
   distortion: number;
   /** velocidad de animación (late con la energía) */
   speed: number;

@@ -82,10 +82,10 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       if (!requireLoopback(req, reply)) return reply;
       const target = req.body?.target as OpenTarget | undefined;
       if (!target || !OPEN_TARGETS.includes(target)) {
-        return reply.code(400).send({ error: "destino inválido" });
+        return reply.code(400).send({ error: "No se reconoce qué se quería abrir." });
       }
       const project = store.get(req.params.id);
-      if (!project) return reply.code(404).send({ error: "not found" });
+      if (!project) return reply.code(404).send({ error: "Ese proyecto ya no existe en Nebula." });
 
       const cfg = deps.getConfig();
       const result = openProject(target, project.path, {
@@ -142,12 +142,12 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
           break;
         case "checkout": {
           const branch = req.body?.branch;
-          if (!branch) return reply.code(400).send({ error: "falta la rama" });
+          if (!branch) return reply.code(400).send({ error: "No se ha indicado a qué rama cambiar." });
           result = await gitCheckout(project.path, branch);
           break;
         }
         default:
-          return reply.code(400).send({ error: "acción desconocida" });
+          return reply.code(400).send({ error: "Esa acción de git no existe." });
       }
       // el estado en pantalla debe reflejar el cambio inmediatamente
       await scanner.refreshGit(project.path);
@@ -489,13 +489,15 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
     async (req, reply) => {
       if (!requireLoopback(req, reply)) return reply;
       const project = store.get(req.params.id);
-      if (!project) return reply.code(404).send({ error: "not found" });
+      if (!project) return reply.code(404).send({ error: "Ese proyecto ya no existe en Nebula." });
 
       const pkg = project.analysis?.pkg;
       const script = req.body?.script;
       // el script debe existir en el package.json: nunca se ejecuta texto libre
       if (!script || !pkg?.scripts.includes(script)) {
-        return reply.code(400).send({ error: "script desconocido en este proyecto" });
+        return reply
+          .code(400)
+          .send({ error: "Ese script no está declarado en el package.json del proyecto." });
       }
 
       const result = deps.runs.start({
@@ -512,7 +514,9 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
 
   app.post<{ Params: { runId: string } }>("/api/runs/:runId/stop", async (req, reply) => {
     if (!requireLoopback(req, reply)) return reply;
-    if (!deps.runs.stop(req.params.runId)) return reply.code(404).send({ error: "not found" });
+    if (!deps.runs.stop(req.params.runId)) {
+      return reply.code(404).send({ error: "Esa ejecución ya no está en marcha." });
+    }
     return { ok: true };
   });
 
@@ -553,6 +557,13 @@ export function registerRoutes(app: FastifyInstance, deps: ApiDeps): void {
       patch.integrations = {
         ...patch.integrations,
         jira: { ...jira, token: current.integrations?.jira?.token ?? "" },
+      };
+    }
+    const github = patch.integrations?.github;
+    if (github && github.token === MASKED_TOKEN) {
+      patch.integrations = {
+        ...patch.integrations,
+        github: { ...github, token: current.integrations?.github?.token ?? "" },
       };
     }
 

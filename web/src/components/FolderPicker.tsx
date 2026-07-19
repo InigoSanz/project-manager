@@ -25,6 +25,15 @@ export function FolderPicker({
 }) {
   const [roots, setRoots] = useState<Array<{ name: string; path: string }>>([]);
   const [listing, setListing] = useState<Listing | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

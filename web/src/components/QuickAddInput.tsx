@@ -79,7 +79,7 @@ export function QuickAddInput({
       {text.trim() && (
         <p className="mt-1 text-[11px] text-slate-500">
           {parse.unknownMention
-            ? `@${parse.unknownMention} no casa con ningún proyecto — irá a tu bandeja personal`
+            ? `@${parse.unknownMention} no coincide con ningún proyecto — la tarea irá a «Sin proyecto»`
             : `→ ${describeParse(parse)} · Enter para crear`}
         </p>
       )}

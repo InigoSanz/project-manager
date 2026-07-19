@@ -7,7 +7,7 @@ import { Icon, type IconName } from "../../components/Icon";
 
 export const SETTINGS_SECTIONS: Array<{ id: string; label: string; icon: IconName; hint: string }> = [
   { id: "general", label: "General", icon: "settings", hint: "Carpetas y escaneo" },
-  { id: "sincronizacion", label: "Sincronización", icon: "sync", hint: "Jira y Planner" },
+  { id: "sincronizacion", label: "Sincronización", icon: "sync", hint: "Jira, Planner y GitHub" },
   { id: "notificaciones", label: "Notificaciones", icon: "bell", hint: "Avisos de Windows" },
   { id: "acceso", label: "Dispositivos", icon: "device", hint: "Acceso desde el móvil" },
 ];

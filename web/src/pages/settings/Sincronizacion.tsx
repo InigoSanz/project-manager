@@ -115,7 +115,7 @@ export function SyncSettings() {
       <Section title="Qué puede cambiar Nebula">
         <SettingRow
           title="Cerrar issues en Jira"
-          description="Desactivado: solo lectura — completar una tarea aquí no cambia nada en Jira."
+          description="Si lo desactivas, Nebula pasa a solo lectura: completar una tarea aquí no cambiará nada en Jira."
         >
           <Switch
             checked={config.integrations?.jira?.writeBack !== false}
@@ -127,7 +127,7 @@ export function SyncSettings() {
         </SettingRow>
         <SettingRow
           title="Completar tareas en Planner"
-          description="Desactivado: solo lectura — completar aquí no marca nada al 100% en Planner."
+          description="Si lo desactivas, Nebula pasa a solo lectura: completar aquí no marcará nada al 100 % en Planner."
         >
           <Switch
             checked={config.integrations?.planner?.writeBack !== false}
@@ -138,7 +138,10 @@ export function SyncSettings() {
             }
           />
         </SettingRow>
-        <SettingRow title="Sincronizar cada" description="Minutos entre syncs automáticos de Jira y Planner.">
+        <SettingRow
+          title="Sincronizar cada"
+          description="Minutos entre sincronizaciones automáticas de Jira, Planner y GitHub."
+        >
           <input
             type="number"
             min={1}

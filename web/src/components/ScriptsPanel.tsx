@@ -63,10 +63,13 @@ export function ScriptsPanel({ project }: { project: Project }) {
 
   return (
     <section className="glass rounded-xl p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Scripts</h3>
         <span className="font-mono text-[10px] text-slate-600">{pkg.packageManager}</span>
       </div>
+      <p className="mb-3 text-[10px] leading-relaxed text-slate-600">
+        Solo se ejecutan los scripts que declara el package.json, y únicamente desde este equipo.
+      </p>
 
       <ul className="space-y-1.5">
         {pkg.scripts.map((script) => {
@@ -116,7 +119,7 @@ export function ScriptsPanel({ project }: { project: Project }) {
               )}
               {openRun.status !== "running" && (
                 <span className={`text-[10px] ${openRun.exitCode === 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                  {openRun.exitCode === 0 ? "terminado" : `código ${openRun.exitCode ?? "?"}`}
+                  {openRun.exitCode === 0 ? "Terminado correctamente" : `Falló (código ${openRun.exitCode ?? "?"})`}
                 </span>
               )}
               <button onClick={() => setOpenRunId(null)} className="text-slate-500 hover:text-white" title="Cerrar">

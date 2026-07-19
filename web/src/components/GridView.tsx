@@ -5,7 +5,7 @@ import type { Project } from "@nebula/shared";
 import { PixelPlanet } from "./PixelPlanet";
 import { Icon } from "./Icon";
 import { ProjectActions } from "./ProjectActions";
-import { FavoriteButton } from "./FavoriteButton";
+import { ArchiveButton, FavoriteButton } from "./ProjectFlags";
 import { useNebula } from "../stores/nebula";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
 import { zoneColor } from "../pixel/palette";
@@ -40,7 +40,14 @@ export function GridView({ projects }: { projects: Project[] }) {
                 className="h-3 w-3 shrink-0 rounded-[3px]"
                 style={{ background: root === ORPHAN_ZONE ? "hsla(230 65% 62% / 1)" : zoneColor(root) }}
               />
-              <h2 className="text-xs font-semibold tracking-wider text-slate-300 uppercase">
+              <h2
+                className="text-xs font-semibold tracking-wider text-slate-300 uppercase"
+                title={
+                  root === ORPHAN_ZONE
+                    ? "Proyectos cuya carpeta raíz ya no está en la configuración"
+                    : root
+                }
+              >
                 {root === ORPHAN_ZONE ? "Espacio profundo" : zoneName(root)}
               </h2>
               <span className="text-xs text-slate-500">{list.length}</span>
@@ -59,9 +66,13 @@ export function GridView({ projects }: { projects: Project[] }) {
 }
 
 function ProjectGrid({ projects }: { projects: Project[] }) {
+  // los favoritos van primero: es lo que promete el botón de la estrella
+  const sorted = [...projects].sort(
+    (a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name),
+  );
   return (
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((p, i) => (
+        {sorted.map((p, i) => (
           <motion.div
             key={p.id}
             initial={{ opacity: 0, y: 16 }}
@@ -77,12 +88,17 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
                   <PixelPlanet project={p} size={34} animate={false} className="shrink-0" />
                   <h3 className="truncate font-semibold text-white">{p.name}</h3>
                   <FavoriteButton project={p} size={13} />
+                  <ArchiveButton project={p} size={13} />
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {p.git && (p.git.behind > 0 || p.git.conflicted > 0) && (
                     <span
                       className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-300"
-                      title={p.git.conflicted > 0 ? "conflictos" : `${p.git.behind} commits por detrás`}
+                      title={
+                        p.git.conflicted > 0
+                          ? "Hay conflictos sin resolver"
+                          : `${p.git.behind} commit${p.git.behind === 1 ? "" : "s"} por detrás del remoto`
+                      }
                     >
                       <Icon name="flag" size={10} />
                       atención
@@ -113,7 +129,11 @@ function ProjectGrid({ projects }: { projects: Project[] }) {
               <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400">
                 {p.git?.branch && <span>⎇ {p.git.branch}</span>}
                 <span>{p.analysis?.metrics.commitsLast30d ?? 0} commits/30d</span>
-                {p.tasks.open > 0 && <span className="text-sky-300">{p.tasks.open} tareas</span>}
+                {p.tasks.open > 0 && (
+                  <span className="text-sky-300">
+                    {p.tasks.open} tarea{p.tasks.open === 1 ? "" : "s"}
+                  </span>
+                )}
               </div>
               {/* acciones sobre la propia tarjeta, sin entrar al proyecto */}
               <ProjectActions project={p} compact className="mt-3 opacity-60 transition-opacity group-hover:opacity-100" />

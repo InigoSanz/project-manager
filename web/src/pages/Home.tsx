@@ -9,6 +9,7 @@ import { zoneColor } from "../pixel/palette";
 import { groupProjectsByRoot, ORPHAN_ZONE, zoneName } from "../pixel/roots";
 import { Icon } from "../components/Icon";
 import { applyFilters, EMPTY_FILTERS, ProjectFilters, type Filters } from "../components/ProjectFilters";
+import { plural } from "../lib/plural";
 
 export function Home() {
   const { projects, scanning, connected, rescan, saveConfig, config, loadConfig, todayCount } = useNebula();
@@ -54,13 +55,13 @@ export function Home() {
           </h1>
           <span className="text-xs text-slate-400">
             {present.length === allPresent.length
-              ? `${present.length} proyectos`
+              ? plural(present.length, "proyecto")
               : `${present.length} de ${allPresent.length}`}
             {scanning && <span className="ml-2 animate-pulse text-indigo-300">escaneando…</span>}
           </span>
           <span
             className={`inline-block h-1.5 w-1.5 rounded-full ${connected ? "bg-emerald-400" : "bg-rose-500"}`}
-            title={connected ? "conectado" : "desconectado"}
+            title={connected ? "Conectado con Nebula" : "Sin conexión con Nebula"}
           />
         </div>
 
@@ -187,7 +188,7 @@ export function Home() {
           >
             <div className="glass pointer-events-auto rounded-2xl p-8 text-center">
               <Icon name="map" size={34} className="mx-auto text-accent" />
-              <p className="mt-3 text-lg text-white">Sin proyectos todavía</p>
+              <p className="mt-3 text-lg text-white">Sin proyectos todavía.</p>
               <p className="mt-2 max-w-sm text-sm text-slate-400">
                 Dile a Nebula dónde viven tus repositorios y los detectará todos automáticamente.
               </p>

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Project } from "@nebula/shared";
 import { Icon } from "./Icon";
+import { plural } from "../lib/plural";
 
 export interface Filters {
   tech: string | null;
@@ -110,24 +111,32 @@ export function ProjectFilters({
         value={filters.activity}
         onChange={(e) => set({ activity: e.target.value as Filters["activity"] })}
         className="rounded-md bg-white/5 px-1.5 py-1 text-slate-300 focus:outline-none"
-        title="Filtrar por actividad reciente"
+        title="Filtrar por actividad reciente (el corte son 7 días)"
       >
         <option value="all" className="bg-slate-900">Actividad</option>
-        <option value="week" className="bg-slate-900">Esta semana</option>
-        <option value="stale" className="bg-slate-900">Dormidos</option>
+        <option value="week" className="bg-slate-900">Con commits esta semana</option>
+        <option value="stale" className="bg-slate-900">Sin tocar en 7 días</option>
       </select>
 
-      <Toggle active={filters.onlyFavorites} onClick={() => set({ onlyFavorites: !filters.onlyFavorites })} title="Solo favoritos">
+      <Toggle
+        active={filters.onlyFavorites}
+        onClick={() => set({ onlyFavorites: !filters.onlyFavorites })}
+        title="Ver solo los proyectos marcados como favoritos"
+      >
         <Icon name="star" size={11} />
       </Toggle>
-      <Toggle active={filters.onlyWithTasks} onClick={() => set({ onlyWithTasks: !filters.onlyWithTasks })} title="Solo con tareas pendientes">
+      <Toggle
+        active={filters.onlyWithTasks}
+        onClick={() => set({ onlyWithTasks: !filters.onlyWithTasks })}
+        title="Ver solo los proyectos con tareas pendientes"
+      >
         <Icon name="check" size={11} />
       </Toggle>
       {archivedCount > 0 && (
         <Toggle
           active={filters.showArchived}
           onClick={() => set({ showArchived: !filters.showArchived })}
-          title={`Mostrar los ${archivedCount} archivados`}
+          title={`Mostrar también ${plural(archivedCount, "proyecto archivado", "proyectos archivados")}`}
         >
           <Icon name="inbox" size={11} />
         </Toggle>

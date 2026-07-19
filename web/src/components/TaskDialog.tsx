@@ -12,6 +12,9 @@ const STATUSES: Array<{ id: TaskStatus; label: string }> = [
   { id: "done", label: "Hecha" },
 ];
 
+/** Ejemplo del campo título, en el mundo de quien usa esto. */
+const TITLE_PLACEHOLDER = "Revisar el PR de autenticación";
+
 const PRIORITIES = ["Ninguna", "Baja", "Media", "Alta"] as const;
 
 function isoDate(d: Date): string {
@@ -211,7 +214,7 @@ export function TaskDialog({
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
               autoFocus
-              placeholder="Llamar al cliente"
+              placeholder={TITLE_PLACEHOLDER}
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
               }}
@@ -225,7 +228,7 @@ export function TaskDialog({
               className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 focus:outline-none"
             >
               <option value="" className="bg-slate-900">
-                Sin proyecto (bandeja personal)
+                Sin proyecto
               </option>
               {projects.map((p: Project) => (
                 <option key={p.id} value={p.id} className="bg-slate-900">
@@ -261,7 +264,7 @@ export function TaskDialog({
               />
             )}
 
-            <label className="mt-4 block text-xs text-slate-300">¿Cuánto corre?</label>
+            <label className="mt-4 block text-xs text-slate-300">¿Qué prioridad tiene?</label>
             <div className="mt-1.5 flex gap-1.5">
               {PRIORITIES.map((label, i) => (
                 <ChipButton key={label} active={priority === i} onClick={() => setPriority(i)} className="flex-1">

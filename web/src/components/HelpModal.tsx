@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Icon, type IconName } from "./Icon";
@@ -9,6 +10,10 @@ function LegendItem({ icon, children }: { icon: IconName; children: React.ReactN
       {children}
     </span>
   );
+}
+
+function Section({ title }: { title: string }) {
+  return <h3 className="mt-5 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">{title}</h3>;
 }
 
 function Key({ children }: { children: React.ReactNode }) {
@@ -25,6 +30,16 @@ function Row({ k, desc }: { k: React.ReactNode; desc: string }) {
 }
 
 export function HelpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // la propia Ayuda prometía «Esc cierra cualquier panel» sin implementarlo
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -49,14 +64,68 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
               </button>
             </div>
 
-            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Atajos</h3>
-            <Row k={<Key>N</Key>} desc="Crear una tarea nueva" />
-            <Row k={<Key>T</Key>} desc="Abrir/cerrar el panel Hoy" />
-            <Row k={<><Key>Ctrl</Key> <Key>K</Key></>} desc="Buscar proyectos, tareas y acciones" />
+            <Section title="Atajos" />
+            <Row k={<Key>N</Key>} desc="Crear una tarea" />
+            <Row k={<Key>T</Key>} desc="Abrir o cerrar el panel Hoy" />
+            <Row k={<><Key>Ctrl</Key> <Key>K</Key></>} desc="Buscar proyectos y tareas, o ejecutar acciones" />
             <Row k={<Key>?</Key>} desc="Esta ayuda" />
-            <Row k={<Key>Esc</Key>} desc="Cerrar cualquier panel" />
+            <Row k={<Key>Esc</Key>} desc="Cerrar el panel abierto" />
 
-            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Crear tareas</h3>
+            <Section title="El mapa" />
+            <div className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
+              <p>Cada planeta es un repositorio y cada zona una de tus carpetas raíz.</p>
+              <p>
+                Arrastra para moverte, rueda o pellizca para acercarte, y haz doble clic para encuadrar una zona. Los
+                nombres aparecen al acercarte lo suficiente.
+              </p>
+              <p>
+                Con la barra de filtros acotas por tecnología, estado de git o actividad. La estrella fija un proyecto
+                arriba y el archivador lo oculta sin borrar nada.
+              </p>
+              <p>
+                Los repositorios cuya carpeta raíz ya no está configurada se agrupan en «Espacio profundo». Con el
+                botón «Cuadrícula» ves lo mismo como fichas.
+              </p>
+            </div>
+
+            <Section title="Trabajar en un proyecto" />
+            <div className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
+              <p>
+                Desde la pestaña <b className="text-slate-300">Resumen</b>: abre el proyecto en tu editor, en una
+                terminal, en el explorador o el repositorio remoto en el navegador.
+              </p>
+              <p>
+                Ahí mismo lanzas los scripts del <code className="text-slate-300">package.json</code> y ves su salida
+                en vivo. Solo se ejecutan los que el proyecto declara, nunca texto libre.
+              </p>
+              <p>
+                En <b className="text-slate-300">Git</b> puedes ver el diff de cada fichero, cambiar de rama, hacer
+                fetch o pull y buscar en el historial. Si un cambio de rama pisara algo, git lo rechaza y te lo cuenta.
+              </p>
+              <p className="text-slate-500">
+                Todo esto solo funciona desde este equipo: desde el móvil ves la información, pero no se ejecuta nada.
+              </p>
+            </div>
+
+            <Section title="Tus tareas están en tres sitios" />
+            <div className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
+              <p>
+                <b className="text-slate-300">Hoy</b> (<Key>T</Key>) es lo accionable ahora: lo que tienes en curso,
+                avisos de git, agentes trabajando y revisiones pendientes.
+              </p>
+              <p>
+                <Link to="/tareas" onClick={onClose} className="text-accent hover:underline">
+                  Todas las tareas
+                </Link>{" "}
+                es la lista completa, con filtros por proyecto, origen y vencimiento.
+              </p>
+              <p>
+                La pestaña <b className="text-slate-300">Tareas</b> de cada proyecto es su tablero, con las columnas
+                Pendiente, En curso y Hecha.
+              </p>
+            </div>
+
+            <Section title="Crear tareas" />
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
               Pulsa <Key>N</Key> o el botón «Nueva tarea»: eliges proyecto, fecha y prioridad con botones, sin
               aprenderte nada.
@@ -68,31 +137,29 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
               <span className="text-amber-300">^hoy ^mañana ^vie ^25/07</span>
             </p>
 
-            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">El mapa</h3>
-            <div className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
-              <p>Cada planeta es un repositorio y cada zona una de tus carpetas raíz.</p>
-              <p>Los repos cuyo root ya no está en la configuración caen en «Espacio profundo».</p>
-              <p>Arrastra para moverte, rueda o pellizca para acercarte; doble click encuadra una zona.</p>
-            </div>
-
-            <h3 className="mt-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Leyenda</h3>
+            <Section title="Leyenda" />
             <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-slate-400">
               <LegendItem icon="jira">issue de Jira</LegendItem>
               <LegendItem icon="planner">tarea de Planner</LegendItem>
+              <LegendItem icon="github">issue de GitHub</LegendItem>
+              <LegendItem icon="pullRequest">pull request</LegendItem>
               <LegendItem icon="ai">derivada de una sesión de IA</LegendItem>
               <LegendItem icon="clock">vencimiento</LegendItem>
               <LegendItem icon="priority">prioridad</LegendItem>
               <LegendItem icon="flag">atención en git</LegendItem>
               <LegendItem icon="dot">agente trabajando ahora</LegendItem>
               <LegendItem icon="branch">rama actual</LegendItem>
+              <LegendItem icon="star">favorito</LegendItem>
+              <LegendItem icon="archive">archivado</LegendItem>
             </div>
 
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-              Al completar una tarea de Jira/Planner, Nebula la cierra también allí (configurable en{" "}
-              <Link to="/ajustes" onClick={onClose} className="text-indigo-300 hover:underline">
+              Nebula trae tus issues de Jira, Planner y GitHub, y al completarlos aquí los cierra también allí. Puedes
+              dejarlo en solo lectura en{" "}
+              <Link to="/ajustes/sincronizacion" onClick={onClose} className="text-indigo-300 hover:underline">
                 Ajustes → Sincronización
               </Link>
-              ).
+              .
             </p>
 
             <div className="mt-4 flex justify-between border-t border-white/10 pt-3">

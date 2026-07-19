@@ -20,7 +20,7 @@ function sortColumn(tasks: TaskItem[]): TaskItem[] {
 const COLUMNS: Array<{ id: TaskStatus; label: string; accent: string }> = [
   { id: "todo", label: "Pendiente", accent: "border-t-sky-400/60" },
   { id: "doing", label: "En curso", accent: "border-t-amber-400/60" },
-  { id: "done", label: "Hecho", accent: "border-t-emerald-400/60" },
+  { id: "done", label: "Hecha", accent: "border-t-emerald-400/60" },
 ];
 
 async function patchTask(id: string, patch: Partial<TaskItem>): Promise<void> {
@@ -317,7 +317,7 @@ export function TaskBoard({ project }: { project: Project }) {
       <JiraKeyControl project={project} />
 
       {/* Alta rápida con tokens (misma sintaxis que Hoy y la paleta) */}
-      <QuickAddInput fixedProject={project} onCreated={refetch} withButton placeholder="Nueva tarea…  (!alta ^vie)" />
+      <QuickAddInput fixedProject={project} onCreated={refetch} withButton placeholder="Nueva tarea… (!alta ^vie)" />
 
       {/* Kanban: 3 columnas en ≥sm; scroll horizontal con snap en móvil */}
       <div className="min-h-0 flex-1 gap-3 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto sm:grid sm:grid-cols-3">

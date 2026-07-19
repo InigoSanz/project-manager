@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { GitCommit, GitDetail, GitFileDiff, Project } from "@nebula/shared";
 import { useToasts } from "./Toast";
 import { Icon } from "./Icon";
+import { plural } from "../lib/plural";
 
 /** Visor de diff de un fichero: coloreado por tipo de línea. */
 function DiffViewer({ projectId, file, onClose }: { projectId: string; file: string; onClose: () => void }) {
@@ -105,6 +106,13 @@ function CommitSpark({ histogram }: { histogram: number[] }) {
   );
 }
 
+/** Nombre de cada acción para los avisos («No se pudo traer cambios: …»). */
+const ACTION_LABEL: Record<string, string> = {
+  fetch: "Traer cambios",
+  pull: "Aplicar cambios",
+  checkout: "Cambiar de rama",
+};
+
 const STATE_LABEL: Record<string, string> = {
   M: "modificado",
   A: "añadido",
@@ -165,8 +173,11 @@ export function GitPanel({ project }: { project: Project }) {
         body: JSON.stringify(body ?? {}),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
-      if (res.ok) push({ level: "success", message: data.message || "Hecho." });
-      else push({ level: "error", message: data.error || "git falló." });
+      // el mensaje dice QUÉ falló y enseña la salida real de git, que suele
+      // explicar el motivo (cambios sin guardar, conflictos, sin remoto…)
+      const what = ACTION_LABEL[action] ?? action;
+      if (res.ok) push({ level: "success", message: data.message || `${what}: hecho.` });
+      else push({ level: "error", message: `No se pudo ${what.toLowerCase()}: ${data.error ?? "error de git"}` });
       const fresh = await fetch(`/api/projects/${project.id}/git`);
       if (fresh.ok) setDetail((await fresh.json()) as GitDetail);
     } finally {
@@ -200,7 +211,7 @@ export function GitPanel({ project }: { project: Project }) {
               <button
                 onClick={() => void gitAction("pull")}
                 disabled={busy !== null}
-                title="Traer y aplicar (solo si avanza en línea recta)"
+                title="Traer y aplicar los cambios del remoto (solo si no hay que fusionar nada)"
                 className="flex items-center gap-1 rounded-md bg-accent/20 px-2 py-1 text-[11px] text-indigo-200 transition-colors hover:bg-accent/35 disabled:opacity-40"
               >
                 <Icon name="chevronDown" size={11} />
@@ -209,7 +220,9 @@ export function GitPanel({ project }: { project: Project }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-md bg-white/5 px-2 py-1 text-slate-200">⎇ {status.branch ?? "detached"}</span>
+            <span className="rounded-md bg-white/5 px-2 py-1 text-slate-200">
+              ⎇ {status.branch ?? "sin rama (HEAD suelto)"}
+            </span>
             {status.upstream && (
               <span className="rounded-md bg-white/5 px-2 py-1 text-slate-400">
                 {status.upstream} {status.ahead > 0 && `↑${status.ahead}`} {status.behind > 0 && `↓${status.behind}`}
@@ -220,16 +233,33 @@ export function GitPanel({ project }: { project: Project }) {
             ) : (
               <>
                 {status.staged > 0 && (
-                  <span className="rounded-md bg-sky-500/15 px-2 py-1 text-sky-300">{status.staged} staged</span>
+                  <span
+                    className="rounded-md bg-sky-500/15 px-2 py-1 text-sky-300"
+                    title="Cambios preparados para el próximo commit (staged)"
+                  >
+                    {plural(status.staged, "preparado")}
+                  </span>
                 )}
                 {status.unstaged > 0 && (
-                  <span className="rounded-md bg-amber-500/15 px-2 py-1 text-amber-300">{status.unstaged} sin stage</span>
+                  <span
+                    className="rounded-md bg-amber-500/15 px-2 py-1 text-amber-300"
+                    title="Cambios en ficheros ya seguidos por git, aún sin preparar (unstaged)"
+                  >
+                    {plural(status.unstaged, "sin preparar", "sin preparar")}
+                  </span>
                 )}
                 {status.untracked > 0 && (
-                  <span className="rounded-md bg-white/10 px-2 py-1 text-slate-300">{status.untracked} nuevos</span>
+                  <span
+                    className="rounded-md bg-white/10 px-2 py-1 text-slate-300"
+                    title="Ficheros que git todavía no sigue (untracked)"
+                  >
+                    {plural(status.untracked, "nuevo")}
+                  </span>
                 )}
                 {status.conflicted > 0 && (
-                  <span className="rounded-md bg-rose-500/15 px-2 py-1 text-rose-300">⚠ {status.conflicted} conflictos</span>
+                  <span className="rounded-md bg-rose-500/15 px-2 py-1 text-rose-300">
+                    ⚠ {plural(status.conflicted, "conflicto")}
+                  </span>
                 )}
               </>
             )}
@@ -272,7 +302,11 @@ export function GitPanel({ project }: { project: Project }) {
                 <button
                   onClick={() => !b.isCurrent && void gitAction("checkout", { branch: b.name })}
                   disabled={b.isCurrent || busy !== null}
-                  title={b.isCurrent ? "Rama actual" : `Cambiar a ${b.name}`}
+                  title={
+                    b.isCurrent
+                      ? "Rama actual"
+                      : `Cambiar a ${b.name} · si tienes cambios que se perderían, git lo rechaza`
+                  }
                   className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left text-xs transition-colors enabled:hover:bg-white/5 disabled:cursor-default"
                 >
                   <span className={`truncate ${b.isCurrent ? "font-semibold text-indigo-300" : "text-slate-300"}`}>

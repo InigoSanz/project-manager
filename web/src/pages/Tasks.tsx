@@ -5,6 +5,7 @@ import { useNebula } from "../stores/nebula";
 import { Icon, type IconName } from "../components/Icon";
 import { TaskMetaBadges } from "../components/TaskMeta";
 import { TaskDialog, type TaskDialogState } from "../components/TaskDialog";
+import { plural } from "../lib/plural";
 
 type Row = TaskItem & { projectName: string | null };
 
@@ -21,6 +22,15 @@ const SOURCE_ICON: Record<string, IconName> = {
   github: "github",
   agent: "ai",
   manual: "check",
+};
+
+/** Etiquetas legibles: sin esto el usuario veía el valor crudo del enum. */
+const SOURCE_LABEL: Record<string, string> = {
+  manual: "Creada por ti",
+  jira: "Jira",
+  planner: "Planner",
+  github: "GitHub",
+  agent: "Sugerida por IA",
 };
 
 /**
@@ -145,7 +155,7 @@ export function TasksPage() {
             <option value="week" className="bg-slate-900">Esta semana</option>
             <option value="none" className="bg-slate-900">Sin fecha</option>
           </select>
-          {data && <span className="ml-auto text-slate-500">{data.total} tareas</span>}
+          {data && <span className="ml-auto text-slate-500">{plural(data.total, "tarea")}</span>}
         </div>
 
         {!data ? (
@@ -188,7 +198,7 @@ export function TasksPage() {
                     )}
                     <span className="flex items-center gap-1">
                       <Icon name={SOURCE_ICON[t.source] ?? "check"} size={10} />
-                      {t.source}
+                      {SOURCE_LABEL[t.source] ?? t.source}
                     </span>
                     <TaskMetaBadges task={t} />
                   </div>

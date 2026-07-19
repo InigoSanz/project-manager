@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { OutdatedReport, Project } from "@nebula/shared";
 import { Icon } from "./Icon";
+import { plural } from "../lib/plural";
 
 /**
  * Dependencias desactualizadas. Solo informa — Nebula nunca actualiza nada.
@@ -44,22 +45,27 @@ export function OutdatedPanel({ project }: { project: Project }) {
           className="flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-1 text-[11px] text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40"
         >
           <Icon name="refresh" size={11} />
-          {loading ? "Consultando…" : report ? "Volver a mirar" : "Comprobar"}
+          {loading ? "Consultando…" : report ? "Volver a comprobar" : "Comprobar"}
         </button>
       </div>
 
       {!report ? (
         <p className="text-xs text-slate-500">
-          Sin comprobar. Consulta el registry, así que tarda unos segundos.
+          Sin comprobar: consulta el registro de paquetes, así que tarda unos segundos.
         </p>
       ) : report.deps.length === 0 ? (
         <p className="text-xs text-emerald-300">Todo al día.</p>
       ) : (
         <>
           <p className="mb-2 text-[11px] text-slate-500">
-            {report.deps.length} desactualizadas
+            {plural(report.deps.length, "dependencia desactualizada", "dependencias desactualizadas")}
             {report.deps.some((d) => d.major) && (
-              <> · <span className="text-amber-300">{report.deps.filter((d) => d.major).length} con salto de versión mayor</span></>
+              <>
+                {" · "}
+                <span className="text-amber-300">
+                  {report.deps.filter((d) => d.major).length} con salto de versión mayor
+                </span>
+              </>
             )}
           </p>
           <ul className="max-h-56 space-y-1 overflow-y-auto text-[11px]">

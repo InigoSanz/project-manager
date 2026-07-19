@@ -74,7 +74,7 @@ export function KnowledgeGraphPanel({ project }: { project: Project }) {
                 </a>
                 :
                 <code className="mt-2 block rounded-lg bg-black/40 p-2 text-left text-[11px] text-slate-300">
-                  uv tool install graphifyy
+                  uv tool install graphify
                   <br />
                   cd {project.path}
                   <br />
